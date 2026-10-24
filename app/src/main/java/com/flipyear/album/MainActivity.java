@@ -25,13 +25,15 @@ public final class MainActivity extends Activity {
     private String pendingBackup;
     private MediaLibrary mediaLibrary;
     private String previousAccess = "denied";
+    private volatile int pendingWidgetId;
     private android.database.ContentObserver mediaObserver;
     private final android.os.Handler mediaHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private final Runnable notifyMedia = () -> { if (web != null) web.evaluateJavascript("window.onNativeGalleryChanged && window.onNativeGalleryChanged()", null); };
+    private final Runnable notifyMedia = () -> { MemoryWidget.refresh(this); if (web != null) web.evaluateJavascript("window.onNativeGalleryChanged && window.onNativeGalleryChanged()", null); };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        pendingWidgetId = savedInstanceState == null ? getIntent().getIntExtra(MemoryWidget.OPEN_ID, 0) : savedInstanceState.getInt("pendingWidgetId", 0);
         getWindow().setStatusBarColor(0xff101011);
         getWindow().setNavigationBarColor(0xff101011);
         getWindow().getDecorView().setSystemUiVisibility(
@@ -66,6 +68,7 @@ public final class MainActivity extends Activity {
                 if ("https".equals(url.getScheme()) && "flipyear.local".equals(url.getHost())) {
                     String path = url.getPath();
                     if (path != null && path.startsWith("/media/")) return mediaLibrary.image(url);
+                    if (path != null && path.startsWith("/widget-photo/")) return widgetPhoto(url);
                     if (path != null && !path.contains("..") && !path.contains("\\")) {
                         String asset = path.equals("/") ? "index.html" : path.substring(1);
                         String mime = asset.endsWith(".js") ? "application/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".json") ? "application/json" : "text/html";
@@ -100,6 +103,26 @@ public final class MainActivity extends Activity {
     }
 
     private final class BackupBridge {
+        @JavascriptInterface
+        public void requestMemoryWidget() {
+            runOnUiThread(() -> {
+                String status = "unsupported";
+                try {
+                    android.appwidget.AppWidgetManager manager = android.appwidget.AppWidgetManager.getInstance(MainActivity.this);
+                    if (manager.isRequestPinAppWidgetSupported()) {
+                        status = manager.requestPinAppWidget(new android.content.ComponentName(MainActivity.this, MemoryWidget.class), null, null) ? "requested" : "unsupported";
+                    }
+                } catch (Exception ignored) { }
+                if (web != null) web.evaluateJavascript("window.onNativeWidgetPinResult && window.onNativeWidgetPinResult(" + org.json.JSONObject.quote(status) + ")", null);
+            });
+        }
+
+        @JavascriptInterface
+        public synchronized String consumeWidgetOpen() {
+            int id = pendingWidgetId; pendingWidgetId = 0;
+            return MemoryWidget.openData(MainActivity.this, id).toString();
+        }
+
         @JavascriptInterface
         public void migrateLegacy(String json) {
             try {
@@ -168,6 +191,32 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private android.webkit.WebResourceResponse widgetPhoto(Uri url) {
+        android.graphics.Bitmap image = null;
+        try {
+            int id = Integer.parseInt(url.getLastPathSegment());
+            if (!MemoryWidget.owned(this, id)) throw new java.io.IOException("Widget removed");
+            String uri = MemoryWidget.prefs(this).getString(MemoryWidget.key(id, "shownUri"), "");
+            // Decode through the resolver on every request: stale widget data cannot bypass revoked grants.
+            image = PhotoDecoder.decode(getContentResolver(), Uri.parse(uri), 1600);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            image.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, out);
+            return new android.webkit.WebResourceResponse("image/jpeg", null, new java.io.ByteArrayInputStream(out.toByteArray()));
+        } catch (Exception e) {
+            return new android.webkit.WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", java.util.Collections.emptyMap(), new java.io.ByteArrayInputStream(new byte[0]));
+        } finally { if (image != null) image.recycle(); }
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent); setIntent(intent);
+        pendingWidgetId = intent.getIntExtra(MemoryWidget.OPEN_ID, 0);
+        if (web != null) web.evaluateJavascript("window.onNativeWidgetOpen && window.onNativeWidgetOpen()", null);
+    }
+
+    @Override protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out); out.putInt("pendingWidgetId", pendingWidgetId);
+    }
+
     private void notifySaved(boolean success) {
         if (web != null) web.evaluateJavascript(
             "window.onNativeSaveResult && window.onNativeSaveResult(" + success + ")", null);
@@ -221,7 +270,7 @@ public final class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] grants) {
         super.onRequestPermissionsResult(code, permissions, grants);
-        if (code == 103) { mediaLibrary.permissionResult(); observeLibrary(); }
+        if (code == 103) { mediaLibrary.permissionResult(); observeLibrary(); MemoryWidget.refresh(this); }
     }
 
     @Override
@@ -234,6 +283,7 @@ public final class MainActivity extends Activity {
         }
         previousAccess = currentAccess;
         observeLibrary();
+        MemoryWidget.refresh(this);
     }
 
     private void observeLibrary() {

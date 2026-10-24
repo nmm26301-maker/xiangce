@@ -85,3 +85,24 @@ $('yearBookFrame').addEventListener('pointerup',e=>{const tap=dayTap;dayTap=null
 // touch release, settle through its public cancel/turn APIs; geometry remains upstream.
 function bindSlowTouchTurn(host,getEngine){let track=null;host.addEventListener('pointerdown',e=>{if(!e.isPrimary){track=null;return;}if(e.pointerType==='mouse')return;track={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now()};},true);host.addEventListener('pointercancel',()=>track=null,true);host.addEventListener('pointerup',e=>{const start=track;track=null;if(!start||start.id!==e.pointerId)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(performance.now()-start.time<200||Math.abs(dx)<host.clientWidth*.22||Math.abs(dy)>Math.abs(dx)*.5)return;const engine=getEngine();if(!engine)return;e.stopImmediatePropagation();engine.cancelTurn();if(dx<0)engine.flipNext();else engine.flipPrev();},true);}
 bindSlowTouchTurn($('yearBookFrame'),()=>yearEngine);
+
+// Widgets open only after IndexedDB is ready, including cold starts and legacy migration.
+$('addMemoryWidget').onclick=()=>{
+ if(globalThis.Android?.requestMemoryWidget)Android.requestMemoryWidget();
+ else showToast('桌面小组件在 Android APK 中使用。安装后在「偏好」添加，或长按桌面选择 FlipYear 小组件。');
+};
+window.onNativeWidgetPinResult=status=>showToast(status==='requested'?'请在桌面确认添加；添加后点小组件右上角设置。':'当前桌面不支持快捷添加，请长按桌面 → 小组件 → FlipYear 桌面回忆。');
+window.onNativeWidgetOpen=()=>{
+ if(!state||!globalThis.Android?.consumeWidgetOpen)return;
+ let data;try{data=JSON.parse(Android.consumeWidgetOpen());}catch{return;}
+ if(!data?.open)return;
+ if(!$('dialogLayer').hidden)closeDialog();
+ if(!$('photoViewer').hidden)closePhotoViewer();
+ if(!$('yearReader').hidden)closeYearbook();
+ if(!$('reader').hidden)closeReader();
+ switchTab('memories');
+ // The native bridge supplies a local, permission-checked photo route, never arbitrary URLs.
+ if(/^https:\/\/flipyear\.local\/widget-photo\/\d+\?v=\d+$/.test(data.src||''))showPhoto([{id:'widget-photo',src:data.src,date:validPhotoDate(data.date)?data.date:'',caption:'桌面珍藏的照片'}],0);
+};
+const widgetShelf=renderShelf;renderShelf=function(){widgetShelf();window.onNativeWidgetOpen();};
+if(state)window.onNativeWidgetOpen();

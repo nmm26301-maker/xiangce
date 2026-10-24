@@ -31,3 +31,19 @@
 - [FlipYear 官方产品说明](https://flipyear.app/)及 App Store 官方截图用于核对年度转盘、月历布局、主题书和那年今日；原版截图与素材未打包进应用。
 - [Android 部分照片授权](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)：区分完整 / 部分 / 拒绝授权，支持重新选择和刷新。
 - [Android ExifInterface](https://developer.android.com/reference/android/media/ExifInterface)：对用户选定照片读取拍摄日期和方向，不写入原图。
+
+
+## v2.1 桌面小组件方案比较（2026-10-24）
+
+| 项目 | 维护与许可核对 | 实现与依赖 | 已知问题／取舍 | 本项目处理 |
+|---|---|---|---|---|
+| [fibelatti/photo-widget](https://github.com/fibelatti/photo-widget/tree/68ca1e1059e3005ba7511311dbec9f7ebe4cf632) | main 68ca1e1，提交 2026-10-24；Apache-2.0 | AppWidgetProvider + RemoteViews；Kotlin、Compose、Hilt、Room、Coil、WorkManager | Provider 中专门处理宿主位图上限、异步广播超时、并发渲染；[开放请求 #196](https://github.com/fibelatti/photo-widget/issues/196) 讨论那年今日及空状态，不将它当作已实现功能 | 借鉴有界解码、整组视图替换、逐实例配置、受限 goAsync 生命周期，不引入整套依赖，不复制源码 |
+| [android/platform-samples](https://github.com/android/platform-samples/tree/177c3b92c387894648d0a2d42d238e265b05bbc3/samples/user-interface/appwidgets) | main 177c3b9，提交 2026-10-23；Apache-2.0 | 官方 AppWidgetManager / AppWidgetProvider 示例；样例工程使用 Kotlin 与 Compose | 示例不是完整照片产品；固定、配置返回值、桌面支持与取消行为需由应用处理 | 使用平台 Java API，与现有无 AndroidX 依赖的 APK 构建保持一致 |
+
+- 对照官方 [配置指南](https://developer.android.com/develop/ui/views/appwidgets/configuration)、[异步更新指南](https://developer.android.com/develop/ui/views/appwidgets/advanced) 和 [基础小组件指南](https://developer.android.com/develop/ui/views/appwidgets)。
+- 新增实现为本项目原生 Java / XML；无第三方小组件代码或新增运行时依赖，原 MPL 引擎许可分发不变。
+- 回忆查询按每个历史年份构造本地时区的日初／次日日初区间，避免 UTC 日期误归档、夏令时固定 24 小时错误和闰日自动变成 2 月 28 日。只使用 DATE_TAKEN，最多取 128 个匹配。
+- 固定照片保存 content URI 与系统持久授权，不缓存原图副本。每次预览通过 ContentResolver 验证访问权；清理授权前检查其他实例的引用。
+- 全量 updateAppWidget 替换视图；位图长边最大 400px，且随宿主像素预算缩小；解码和查询放到后台，广播最长保留 8 秒。
+- 系统 30 分钟周期可能因省电延迟；提供手动刷新。无精确零点更新承诺，也不借助常驻服务绕过系统限制。
+- 已完成 JVM 日期策略与浏览器桥接测试；尚无安卓桌面宿主／授权生命周期实测，记录在 TEST-RESULTS.md。

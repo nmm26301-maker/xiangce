@@ -1,0 +1,10 @@
+<resources>
+    <string name="widget_title">那年今日</string>
+    <string name="widget_label">FlipYear 桌面回忆</string>
+    <string name="widget_description">把往年今日或一张珍藏照片留在桌面，可调整大小和单独设置。</string>
+    <string name="widget_settings">设置此小组件</string>
+    <string name="widget_photo">回忆照片，轻点完整查看</string>
+    <string name="widget_next">换图</string>
+    <string name="widget_refresh">刷新照片与授权状态</string>
+    <string name="widget_empty">往年的今天暂无照片。轻点打开相册，或在设置中选择固定照片。</string>
+</resources>

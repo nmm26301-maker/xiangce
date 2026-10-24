@@ -1,15 +1,24 @@
-# FlipYear 相册书 · 2.0.0
+# FlipYear 相册书 · 2.1.0
 
 安卓本地年度照片书的个人实现。黑色书房背景、年度转盘、照片封面、十二个月的日历纸张和卷页动画。
 
 ## 使用
 
-1. 保留旧版应用，直接安装 FlipYear-v2.0.0.apk。包名与开发签名沿用 1.0，首次启动会迁移旧版相册。
+1. 保留旧版应用，直接安装 FlipYear-v2.1.0.apk。包名与开发签名沿用 1.0，首次启动会迁移旧版相册。
 2. 点击「连接系统相册」，由系统选择照片授权范围。允许部分照片也可以生成对应年鉴；拒绝后仍可手动制作相册。
 3. 选择年份，翻开封面，滑动或用按钮翻阅月份；横屏/宽屏显示双页。
 4. 点日期查看完整比例的照片，或用「查看本月照片」进入列表；年度封面可以更换。
 5. 「相册」中创建主题照片书，可编辑文案、日期、顺序、页面样式，导入或删除照片。
-6. 「今日」显示往年同月同日的照片；「偏好」提供浅/深色、减少动效、翻页速度、备份与开源许可。
+6. 「今日」显示往年同月同日的照片；「偏好」提供浅/深色、减少动效、翻页速度、备份、桌面小组件与开源许可。
+
+## 桌面小组件
+
+- 「偏好 → 添加桌面小组件」请求桌面确认；不支持快捷添加时，长按桌面 → 小组件 → FlipYear 桌面回忆。取消添加不会显示成功提示。
+- 点小组件右上角齿轮，可为每个实例分别选择「那年今日」或「固定照片」。默认完整呈现照片，可切换填满画框。支持调整大小。
+- 那年今日仅查询已授权的系统照片，使用真实拍摄日期匹配往年同月同日，不用入库日期替代；无匹配时显示空状态。按拍摄时间排序，最多轮阅 128 张。多张时点「换图」浏览。
+- 固定照片使用系统文件选择器的持久 URI 授权，不要求开放整个照片库。源文件删除或授权撤回后显示不可用；替换、取消选图和移除组件会清理不再使用的持久授权，多组件共享的授权保留。
+- 点照片在应用中按完整比例查看。点 ↻ 手动刷新；系统约每 30 分钟请求更新，打开应用、相册变化和授权结果也会刷新。受系统省电和桌面实现影响，定时更新可能延迟，不承诺零点立即更新。
+- 单个小组件位图长边不超过 400px，按宿主尺寸收缩；整组 RemoteViews 替换，避免累积位图动作。没有额外后台服务、精确闹钟或网络依赖。照片会显示在桌面，请按自己的隐私偏好设置。
 
 ## 照片与日期
 
@@ -38,7 +47,7 @@ v1 的 file origin 数据通过同源迁移页读取，先写入应用私有临�
 - Linux SDK 构建：设置 ANDROID_HOME，执行 bash build-android.sh。可用 ANDROID_BUILD_TOOLS / ANDROID_JAR 指定 SDK 路径。
 - signing/flipyear-debug.jks 是开发版调试签名，别名 androiddebugkey，标准调试口令 android。只用于开发版覆盖安装。
 
-主要源码：app/src/main/assets/index.html、yearbook.js、yearbook.css；安卓容器 MainActivity.java、MediaLibrary.java。
+主要源码：app/src/main/assets/index.html、yearbook.js、yearbook.css；安卓容器 MainActivity.java、MediaLibrary.java；原生小组件 MemoryWidget.java、WidgetConfigActivity.java；共享预览 PhotoDecoder.java。
 
 `python3 scripts/build-web.py` 生成自包含 FlipYear.html；网页版可手动导入，系统照片库连接仅在 APK 中可用。网页版与 APK 本地数据独立，可用自建相册备份迁移。
 
@@ -51,12 +60,14 @@ Node + Playwright + Chromium 环境下执行：
 ```bash
 node tests/functional.cjs
 node tests/yearbook.cjs
+node tests/widgets.cjs
+bash tests/native-policy.sh
 ```
 
-可通过 CHROME_BIN 指定浏览器。测试涵盖编辑、持久化、备份/恢复、月历闰年、卷页正反向、快慢触摸、宽屏双页、旧状态迁移与部分授权回调。APK 编译、对齐、签名校验通过；尚未在安卓真机或模拟器安装验证权限对话框、MediaStore 和 WebView。
+可通过 CHROME_BIN 指定浏览器。测试涵盖编辑、持久化、备份/恢复、月历闰年、卷页正反向、快慢触摸、宽屏双页、旧状态迁移、部分授权回调及小组件桥接入口。原生日期策略在 JVM 验证闰年、本地时区、夏令时边界、照片切换与位图预算。APK 编译、对齐、签名校验通过；浏览器原生传输使用 mock，尚未在安卓真机或模拟器安装验证桌面宿主、持久 URI 授权、权限对话框、MediaStore 和 WebView。
 
-尚未提供桌面小组件、回忆通知、云同步和 PDF/视频导出。
+尚未提供回忆通知、云同步和 PDF/视频导出。
 
-项目仓库：https://github.com/nmm26301-maker/xiangce 。源码、开发签名、测试记录和安装包在该仓库维护。安装包位于 releases/FlipYear-v2.0.0.apk。
+项目仓库：https://github.com/nmm26301-maker/xiangce 。源码、开发签名、测试记录和安装包在该仓库维护。安装包位于 releases/FlipYear-v2.1.0.apk。
 
 示例照片为内置 Unsplash 演示图片（photo-1470770841072-f978cf4d019e、photo-1464822759023-fed622ff2c3b、photo-1500534623283-312aade485b7、photo-1473448912268-2022ce9509d8、photo-1500530855697-b586d89ba3ee、photo-1441974231531-c6227db76b6e），运行时不联网获取。

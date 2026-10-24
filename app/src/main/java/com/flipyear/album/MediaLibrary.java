@@ -6,8 +6,6 @@ import android.content.ContentUris;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
@@ -144,33 +142,7 @@ final class MediaLibrary {
     }
 
     private void generatePreview(Uri source, File target, int edge) throws Exception {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        try (InputStream s = activity.getContentResolver().openInputStream(source)) { BitmapFactory.decodeStream(s, null, options); }
-        int sample = 1;
-        while (Math.max(options.outWidth, options.outHeight) / (sample * 2) >= edge) sample *= 2;
-        options.inSampleSize = sample; options.inJustDecodeBounds = false;
-        Bitmap image;
-        try (InputStream s = activity.getContentResolver().openInputStream(source)) { image = BitmapFactory.decodeStream(s, null, options); }
-        if (image == null) throw new java.io.IOException("暂不支持此图片格式");
-        int orientation = ExifInterface.ORIENTATION_NORMAL;
-        try (InputStream s = activity.getContentResolver().openInputStream(source)) {
-            orientation = new ExifInterface(s).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-        } catch (Exception ignored) { }
-        Matrix m = new Matrix();
-        switch (orientation) {
-            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL: m.setScale(-1,1); break;
-            case ExifInterface.ORIENTATION_ROTATE_180: m.setRotate(180); break;
-            case ExifInterface.ORIENTATION_FLIP_VERTICAL: m.setScale(1,-1); break;
-            case ExifInterface.ORIENTATION_TRANSPOSE: m.setRotate(90); m.postScale(-1,1); break;
-            case ExifInterface.ORIENTATION_ROTATE_90: m.setRotate(90); break;
-            case ExifInterface.ORIENTATION_TRANSVERSE: m.setRotate(270); m.postScale(-1,1); break;
-            case ExifInterface.ORIENTATION_ROTATE_270: m.setRotate(270); break;
-            default: break;
-        }
-        if (!m.isIdentity()) { Bitmap rotated = Bitmap.createBitmap(image,0,0,image.getWidth(),image.getHeight(),m,true); if (rotated != image) image.recycle(); image = rotated; }
-        float ratio = Math.min(1f, (float)edge / Math.max(image.getWidth(),image.getHeight()));
-        if (ratio < 1) { Bitmap scaled = Bitmap.createScaledBitmap(image,Math.max(1,Math.round(image.getWidth()*ratio)),Math.max(1,Math.round(image.getHeight()*ratio)),true); if (scaled != image) image.recycle(); image = scaled; }
+        Bitmap image = PhotoDecoder.decode(activity.getContentResolver(), source, edge);
         File temporary = File.createTempFile("preview-", ".jpg", target.getParentFile());
         try {
             try (FileOutputStream out = new FileOutputStream(temporary)) { if (!image.compress(Bitmap.CompressFormat.JPEG,85,out)) throw new java.io.IOException("无法生成预览"); }
