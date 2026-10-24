@@ -1,0 +1,90 @@
+{
+  "name": "@gullabs/flipbook-core",
+  "version": "3.2.2",
+  "description": "Framework-agnostic page-curl engine. Maintained fork of StPageFlip.",
+  "license": "MPL-2.0",
+  "author": "Atif Gul",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gul-labs/flipbook.git",
+    "directory": "packages/core"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "size-limit": [
+    {
+      "name": "html-engine (raw, drift alarm)",
+      "path": "size-check/html-engine.js",
+      "limit": "69 kB",
+      "gzip": false,
+      "brotli": false
+    },
+    {
+      "name": "html-engine (brotli transfer)",
+      "path": "size-check/html-engine.js",
+      "limit": "16.8 kB"
+    },
+    {
+      "name": "html-engine (gzip transfer)",
+      "path": "size-check/html-engine.js",
+      "limit": "19 kB",
+      "gzip": true,
+      "brotli": false
+    }
+  ],
+  "devDependencies": {
+    "@size-limit/file": "^13.0.3",
+    "size-limit": "^13.0.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  },
+  "bugs": "https://github.com/gul-labs/flipbook/issues",
+  "homepage": "https://github.com/gul-labs/flipbook/tree/main/packages/core#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "keywords": [
+    "flipbook",
+    "page-flip",
+    "page-turn",
+    "book",
+    "typescript",
+    "stpageflip",
+    "html"
+  ],
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/atifgul99"
+    }
+  ],
+  "scripts": {
+    "build": "tsup && node ../../scripts/copy-css.mjs && node ../../scripts/pack-html-engine.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --project core",
+    "size": "size-limit"
+  }
+}
