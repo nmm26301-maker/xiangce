@@ -5,7 +5,7 @@ assets=root/'app/src/main/assets'
 html=(assets/'index.html').read_text()
 for path in ['vendor/flipbook-core.css','yearbook.css']:
  html=html.replace('<link rel="stylesheet" href="'+path+'">','<style>'+ (assets/path).read_text()+'</style>')
-for path in ['vendor/flipbook-core.js','yearbook.js']:
+for path in ['vendor/flipbook-core.js','yearbook.js','custom-video.js']:
  code=(assets/path).read_text().replace('</script','<\\/script')
  html=html.replace('<script src="'+path+'"></script>','<script>'+code+'</script>')
 source=(assets/'vendor/engine-source.json').read_text()

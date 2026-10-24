@@ -62,3 +62,19 @@
 - READ_MEDIA_IMAGES 与 READ_MEDIA_VIDEO 独立判定；只有两类都 full 才汇总为 full。部分授权或单类授权仍可索引对应类型；扫描失败时，已确认失去访问权的类型不能从旧快照恢复。
 - 本地视频的 ID 格式、数值范围由共享 MediaPolicy 校验；原生页面不导出，不接受任意 URI / 网络源。原图与视频的 MediaStore ID 命名空间、封面缓存文件分别区分。
 - 浏览器验证显式入口及权限桥接，JVM 直接验证生产权限规则；真实 MediaStore、设备解码、进度控制和后台恢复仍需安卓验证。Live Photo / Motion Photo 配对不在本次实现内。
+
+
+## v2.3 主题相册视频与流式备份（2026-10-25）
+
+| 项目 | 维护与许可证核对 | 设计／依赖与问题 | 决策 |
+|---|---|---|---|
+| [srikanth-lingala/zip4j](https://github.com/srikanth-lingala/zip4j) | pushed_at 2026-03-11；Apache-2.0 | Java / Android ZIP 库，支持流、加密和分卷；[SAF 流讨论 #285](https://github.com/srikanth-lingala/zip4j/issues/285) 提醒不能依赖真实文件路径；提取仍需防止 ZipSlip | 参考流式读写和条目校验设计，本次不需要加密／分卷，使用平台 java.util.zip，无新增依赖、无源码复制 |
+| [apache/commons-compress](https://github.com/apache/commons-compress) | pushed_at 2026-10-22；Apache-2.0 | 多归档格式和流式处理库，依赖范围大于单一 ZIP；支持更多格式不代表应用可以忽略解压大小与文件名限制 | 仅接收自有清单协议的 ZIP，限制清单／文件／总量，未引入通用解包能力或第三方代码 |
+
+- 对照 [Android SAF](https://developer.android.com/training/data-storage/shared/documents-files)、[应用私有存储](https://developer.android.com/training/data-storage/app-specific)、[Zip Path Traversal 防护](https://developer.android.com/privacy-and-security/risks/zip-path-traversal)、[ThumbnailUtils](https://developer.android.com/reference/android/media/ThumbnailUtils)。
+- 使用系统选择器的临时 content URI 读取并复制，不保存外部文件路径，也不依赖原文件持久授权。独立副本用内部生成的 UUID v4 命名，原生播放只接受系统数字 ID 或该私有 ID。
+- ZIP 第一项必须是 manifest.json，其余仅允许清单引用的 media/local-video-UUID.bin。严格名称、空暂存目录、规范路径、集合一致性、逐块大小上限和 CRC 同时生效；写入已有文件会拒绝，恢复视频重新编号。
+- 64KiB 缓冲串行复制；说明最多 32MiB、单段 250MiB、整份解压合计 512MiB、最多 200 个视频。未知大小的输入同样按实际读取量限制，不依赖 ZIP 头部声明。
+- 原生结果持久化为私有 JSON，经本地 WebView 资源读取；相册与处理令牌在同一 IndexedDB 快照提交。成功后确认保留，取消／失败只删除新生成的副本。未能读取数据库时不丢弃待办结果。
+- 自动删除原视频、后台上传、动态照片配对、云同步和加密备份均不在本次范围。清理无引用副本由明确按钮发起，并先验证当前相册保存成功。
+- 新增 AlbumArchiveTest 在 JVM 执行生产 ZIP 代码，custom-videos.cjs 验证 UI／数据库流程；安卓真实选择器、进程重建、私有视频播放和存储不足场景仍待设备验证。

@@ -31,9 +31,15 @@ public final class VideoPlayerActivity extends Activity {
         getWindow().setStatusBarColor(0xff101011);
         getWindow().setNavigationBarColor(0xff101011);
         getWindow().getDecorView().setSystemUiVisibility(0);
-        long id = MediaPolicy.videoId(getIntent().getStringExtra(MEDIA_ID));
-        if (id < 0) { finish(); return; }
-        source = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
+        String mediaId = getIntent().getStringExtra(MEDIA_ID);
+        if (AlbumArchive.validId(mediaId)) {
+            try { source = Uri.fromFile(CustomMedia.file(this, mediaId)); }
+            catch (java.io.IOException e) { finish(); return; }
+        } else {
+            long id = MediaPolicy.videoId(mediaId);
+            if (id < 0) { finish(); return; }
+            source = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
+        }
         position = saved == null ? 0 : Math.max(0, saved.getInt("position", 0));
         initialPlay = saved == null;
         LinearLayout body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); body.setBackgroundColor(0xff101011);

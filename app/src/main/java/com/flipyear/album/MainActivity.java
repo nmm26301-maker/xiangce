@@ -24,6 +24,7 @@ public final class MainActivity extends Activity {
     private ValueCallback<Uri[]> picker;
     private String pendingBackup;
     private MediaLibrary mediaLibrary;
+    private CustomMedia customMedia;
     private String previousAccess = "";
     private boolean launchingVideo;
     private volatile int pendingWidgetId;
@@ -56,7 +57,10 @@ public final class MainActivity extends Activity {
         settings.setDisplayZoomControls(false);
         web.setBackgroundColor(0xff101011);
         mediaLibrary = new MediaLibrary(this, code -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); }));
+        customMedia = new CustomMedia(this, code -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); }));
+        customMedia.restoreTarget(savedInstanceState);
         web.addJavascriptInterface(new BackupBridge(), "Android");
+        web.addJavascriptInterface(customMedia, "AlbumMedia");
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -70,6 +74,7 @@ public final class MainActivity extends Activity {
                     String path = url.getPath();
                     if (path != null && path.startsWith("/media/")) return mediaLibrary.image(url);
                     if (path != null && path.startsWith("/widget-photo/")) return widgetPhoto(url);
+                    if (path != null && (path.startsWith("/custom-media/") || path.startsWith("/album-result/"))) return customMedia.resource(url);
                     if (path != null && !path.contains("..") && !path.contains("\\")) {
                         String asset = path.equals("/") ? "index.html" : path.substring(1);
                         String mime = asset.endsWith(".js") ? "application/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".json") ? "application/json" : "text/html";
@@ -108,7 +113,7 @@ public final class MainActivity extends Activity {
         public void playVideo(String mediaId) {
             runOnUiThread(() -> {
                 if (launchingVideo) return;
-                if (MediaPolicy.videoId(mediaId) < 0) { videoError(); return; }
+                if (MediaPolicy.videoId(mediaId) < 0 && !AlbumArchive.validId(mediaId)) { videoError(); return; }
                 try {
                     launchingVideo = true;
                     startActivity(new Intent(MainActivity.this, VideoPlayerActivity.class).putExtra(VideoPlayerActivity.MEDIA_ID, mediaId));
@@ -232,6 +237,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("pendingWidgetId", pendingWidgetId);
+        if (customMedia != null) customMedia.saveTarget(out);
     }
 
     private void notifySaved(boolean success) {
@@ -242,6 +248,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (customMedia != null && customMedia.handleResult(requestCode, resultCode, data)) return;
         if (requestCode == PICK_PHOTOS && picker != null) {
             Uri[] values = null;
             if (resultCode == RESULT_OK && data != null) {
@@ -295,6 +302,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         launchingVideo = false;
         if (mediaLibrary == null) return;
+        if (web != null) web.evaluateJavascript("window.onAlbumMediaResult && window.onAlbumMediaResult()", null);
         String currentAccess = mediaLibrary.accessFingerprint();
         if (!previousAccess.isEmpty() && !previousAccess.equals(currentAccess) && web != null) {
             web.evaluateJavascript("window.onGalleryPermissionChanged && window.onGalleryPermissionChanged()", null);
@@ -335,7 +343,8 @@ public final class MainActivity extends Activity {
         if (picker != null) { picker.onReceiveValue(null); picker = null; }
         mediaHandler.removeCallbacks(notifyMedia);
         if (mediaObserver != null) { getContentResolver().unregisterContentObserver(mediaObserver); mediaObserver = null; }
-        if (web != null) { web.removeJavascriptInterface("Android"); web.destroy(); web = null; }
+        if (customMedia != null) customMedia.close();
+        if (web != null) { web.removeJavascriptInterface("Android"); web.removeJavascriptInterface("AlbumMedia"); web.destroy(); web = null; }
         super.onDestroy();
     }
 }

@@ -16,3 +16,4 @@ body.night{--paper:#fffaf0}body .primary{color:#171717}body.light .primary{color
 .today-photos button{position:relative}.today-photos .video-badge{bottom:25px;right:5px}
 .photo-viewer .play-video{align-self:center;flex-shrink:0;min-height:48px;margin:0 0 4px;background:#e4c691;color:#211e18}
 .photo-viewer:has(.play-video:not([hidden])) img{height:calc(100dvh - 250px)}
+.custom-video-toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin:12px 12px 18px}.custom-video-toolbar span{font-size:11px;color:var(--muted);max-width:230px}.video-page-play{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);min-height:48px;max-width:90%;z-index:3;background:#e4c691;color:#211e18;font-size:12px}.video-page .page-image{background:#252324}
