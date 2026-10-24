@@ -24,7 +24,8 @@ public final class MainActivity extends Activity {
     private ValueCallback<Uri[]> picker;
     private String pendingBackup;
     private MediaLibrary mediaLibrary;
-    private String previousAccess = "denied";
+    private String previousAccess = "";
+    private boolean launchingVideo;
     private volatile int pendingWidgetId;
     private android.database.ContentObserver mediaObserver;
     private final android.os.Handler mediaHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -103,6 +104,18 @@ public final class MainActivity extends Activity {
     }
 
     private final class BackupBridge {
+        @JavascriptInterface
+        public void playVideo(String mediaId) {
+            runOnUiThread(() -> {
+                if (launchingVideo) return;
+                if (MediaPolicy.videoId(mediaId) < 0) { videoError(); return; }
+                try {
+                    launchingVideo = true;
+                    startActivity(new Intent(MainActivity.this, VideoPlayerActivity.class).putExtra(VideoPlayerActivity.MEDIA_ID, mediaId));
+                } catch (Exception e) { launchingVideo = false; videoError(); }
+            });
+        }
+
         @JavascriptInterface
         public void requestMemoryWidget() {
             runOnUiThread(() -> {
@@ -191,6 +204,10 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void videoError() {
+        if (web != null) web.evaluateJavascript("window.onNativeVideoError && window.onNativeVideoError()", null);
+    }
+
     private android.webkit.WebResourceResponse widgetPhoto(Uri url) {
         android.graphics.Bitmap image = null;
         try {
@@ -270,16 +287,20 @@ public final class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] grants) {
         super.onRequestPermissionsResult(code, permissions, grants);
-        if (code == 103) { mediaLibrary.permissionResult(); observeLibrary(); MemoryWidget.refresh(this); }
+        if (code == 103) { previousAccess = mediaLibrary.accessFingerprint(); mediaLibrary.permissionResult(); observeLibrary(); MemoryWidget.refresh(this); }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        launchingVideo = false;
         if (mediaLibrary == null) return;
-        String currentAccess = mediaLibrary.access();
-        if (!"denied".equals(previousAccess) && !previousAccess.equals(currentAccess) && web != null) {
+        String currentAccess = mediaLibrary.accessFingerprint();
+        if (!previousAccess.isEmpty() && !previousAccess.equals(currentAccess) && web != null) {
             web.evaluateJavascript("window.onGalleryPermissionChanged && window.onGalleryPermissionChanged()", null);
+        } else if (web != null) {
+            // The selected set can change while both permission enums remain 'partial'.
+            web.evaluateJavascript("window.onNativeGalleryChanged && window.onNativeGalleryChanged()", null);
         }
         previousAccess = currentAccess;
         observeLibrary();
@@ -294,8 +315,12 @@ public final class MainActivity extends Activity {
                 mediaHandler.postDelayed(notifyMedia, 1200);
             }
         };
-        try { getContentResolver().registerContentObserver(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, mediaObserver); }
-        catch (Exception e) { mediaObserver = null; android.util.Log.e("FlipYear", "无法监听相册变化", e); }
+        boolean registered = false;
+        for (Uri source : new Uri[] {android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI}) {
+            try { getContentResolver().registerContentObserver(source, true, mediaObserver); registered = true; }
+            catch (Exception e) { android.util.Log.e("FlipYear", "无法监听影像变化", e); }
+        }
+        if (!registered) mediaObserver = null;
     }
 
     @Override

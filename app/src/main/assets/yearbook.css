@@ -9,3 +9,10 @@ body.night{--paper:#fffaf0}body .primary{color:#171717}body.light .primary{color
 .photo-leaf{overflow:hidden;border-radius:4px 12px 12px 4px}.photo-leaf .paper-page{width:100%;height:100%;position:absolute;inset:0}.book-stage.stf__parent{max-width:none;aspect-ratio:auto;isolation:auto}.book-stage .stf__wrapper{height:100%}.book-stage.stf__parent:before,.book-stage.stf__parent:after{display:none}.year-wheel:focus-within{mask-image:none}
 .year-shelf:after{right:0}
 .calendar-week span{color:color-mix(in srgb,var(--month-color) 72%,#201d18 28%)}.calendar-foot,.calendar-heading .month-year{color:#70675b}
+
+/* Video posters remain static until the reader explicitly opens native playback. */
+.video-badge{position:absolute;right:3px;bottom:3px;padding:2px 4px;border-radius:4px;background:#101011d9;color:#fff;font-size:10px;line-height:1.3;pointer-events:none}
+.calendar-day .video-badge{font-size:8px;padding:1px 2px;right:2px;bottom:2px}
+.today-photos button{position:relative}.today-photos .video-badge{bottom:25px;right:5px}
+.photo-viewer .play-video{align-self:center;flex-shrink:0;min-height:48px;margin:0 0 4px;background:#e4c691;color:#211e18}
+.photo-viewer:has(.play-video:not([hidden])) img{height:calc(100dvh - 250px)}

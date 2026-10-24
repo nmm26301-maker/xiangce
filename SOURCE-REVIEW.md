@@ -47,3 +47,18 @@
 - 全量 updateAppWidget 替换视图；位图长边最大 400px，且随宿主像素预算缩小；解码和查询放到后台，广播最长保留 8 秒。
 - 系统 30 分钟周期可能因省电延迟；提供手动刷新。无精确零点更新承诺，也不借助常驻服务绕过系统限制。
 - 已完成 JVM 日期策略与浏览器桥接测试；尚无安卓桌面宿主／授权生命周期实测，记录在 TEST-RESULTS.md。
+
+
+## v2.2 系统视频方案比较（2026-10-24）
+
+| 项目 | 维护与许可证核对 | 实现／依赖与已知问题 | 决策 |
+|---|---|---|---|
+| [androidx/media](https://github.com/androidx/media/tree/8c6678b657ede1e7883fc164ef73ed483c7796c3) | 仓库 pushed_at 2026-10-23；核对 release 分支 8c6678b；Apache-2.0 | Media3 / ExoPlayer 模块提供播放状态与生命周期 API，可按需添加扩展；需要 AndroidX 依赖和 Maven 构建，编解码仍受平台／扩展限制；官方 release notes 持续记录寻址和短媒体修复 | 作为成熟设计参考。当前仅本地 MediaStore 视频，沿用无运行时依赖的 Java APK，使用平台 VideoView / MediaController，不引入整个播放框架 |
+| [FossifyOrg/Gallery](https://github.com/FossifyOrg/Gallery/tree/e9812299b9d444b57072313cd2c3efd59c790f98) | main e981229；pushed_at 2026-10-24；GPL-3.0 | 独立视频页与媒体浏览联动；Kotlin / AndroidX / Media3。已关闭 [#831](https://github.com/FossifyOrg/Gallery/issues/831) 记录暂停状态下拖动进度意外开始播放 | 借鉴分离索引、静态封面和显式播放入口，以及后台暂停／释放设计；不复制 GPL 源码，不把上游关闭问题视作本应用已通过设备验证 |
+
+- 官方依据：[共享媒体索引与分类型授权](https://developer.android.com/training/data-storage/shared/media)、[Android 14 部分照片／视频访问及 onResume 刷新](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)、[VideoView](https://developer.android.com/reference/android/widget/VideoView)、[MediaMetadataRetriever](https://developer.android.com/reference/android/media/MediaMetadataRetriever)。
+- 新增代码全部为本项目实现，无第三方播放器代码或依赖。通过 VideoView 的公开 API 播放，MediaController 处理拖动；页面不在 WebView 中代理视频字节流，避免缺失 Range / seek 支持。
+- API 27 起使用 getScaledFrameAtTime 的有界输出；API 26 使用平台 MINI_KIND 缩略图，避免解码完整 4K 帧后才缩小。封面只作静态预览，提取失败不封锁播放入口。
+- READ_MEDIA_IMAGES 与 READ_MEDIA_VIDEO 独立判定；只有两类都 full 才汇总为 full。部分授权或单类授权仍可索引对应类型；扫描失败时，已确认失去访问权的类型不能从旧快照恢复。
+- 本地视频的 ID 格式、数值范围由共享 MediaPolicy 校验；原生页面不导出，不接受任意 URI / 网络源。原图与视频的 MediaStore ID 命名空间、封面缓存文件分别区分。
+- 浏览器验证显式入口及权限桥接，JVM 直接验证生产权限规则；真实 MediaStore、设备解码、进度控制和后台恢复仍需安卓验证。Live Photo / Motion Photo 配对不在本次实现内。
