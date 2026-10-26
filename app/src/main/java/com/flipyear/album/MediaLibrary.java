@@ -141,15 +141,41 @@ final class MediaLibrary {
             try (InputStream check = activity.getContentResolver().openInputStream(source)) {
                 if (check == null) return missingImage();
             }
-            int edge = "thumb".equals(request.getQueryParameter("size")) ? 320 : video ? 640 : 1600;
+            String size = request.getQueryParameter("size");
+            boolean full = !video && "full".equals(size);
+            android.app.ActivityManager memory = (android.app.ActivityManager) activity.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+            int detailEdge = memory != null && memory.isLowRamDevice() ? 2048 : 3072;
+            int edge = "thumb".equals(size) ? 320 : video ? 640 : full ? detailEdge : 1600;
             String version = request.getQueryParameter("v");
             if (version == null || !version.matches("[0-9]{1,20}")) version = "0";
             File folder = new File(activity.getCacheDir(), "photo-previews");
             if (!folder.exists() && !folder.mkdirs()) throw new java.io.IOException("无法创建预览缓存");
             File target = new File(folder, (video ? "video-" : "") + id + "-" + version + "-" + edge + ".jpg");
             if (!target.exists()) generatePreview(source, target, edge, video, id);
-            return new WebResourceResponse("image/jpeg", null, new FileInputStream(target));
+            FileInputStream stream = new FileInputStream(target);
+            if (full) trimPreviewCache(folder, target);
+            return new WebResourceResponse("image/jpeg", null, stream);
         } catch (Exception e) { return missingImage(); }
+    }
+
+    // The full-resolution tier uses cached bounded JPEG previews rather than raw photos.
+    // Trim only when the viewer requests detail to avoid O(n) scans for calendar thumbnails.
+    private void trimPreviewCache(File folder, File active) {
+        synchronized (this) {
+            File[] photos = folder.listFiles((dir, name) -> name.endsWith(".jpg"));
+            if (photos == null) return;
+            long bytes = 0;
+            for (File file : photos) bytes += file.length();
+            active.setLastModified(System.currentTimeMillis());
+            java.util.Arrays.sort(photos, (left, right) -> Long.compare(left.lastModified(), right.lastModified()));
+            final long budget = 160L * 1024L * 1024L;
+            for (File file : photos) {
+                if (bytes <= budget) break;
+                if (file.equals(active)) continue;
+                long length = file.length();
+                if (file.delete()) bytes -= length;
+            }
+        }
     }
 
     private void generatePreview(Uri source, File target, int edge, boolean video, long id) throws Exception {
