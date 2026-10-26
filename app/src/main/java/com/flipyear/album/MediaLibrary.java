@@ -155,7 +155,12 @@ final class MediaLibrary {
             FileInputStream stream = new FileInputStream(target);
             if (full) trimPreviewCache(folder, target);
             return new WebResourceResponse("image/jpeg", null, stream);
-        } catch (Exception e) { return missingImage(); }
+        } catch (Exception e) {
+            // Let the viewer fall back to its standard-size preview if detail decoding fails.
+            if ("full".equals(request.getQueryParameter("size")))
+                return new WebResourceResponse("image/jpeg", null, new ByteArrayInputStream(new byte[0]));
+            return missingImage();
+        }
     }
 
     // The full-resolution tier uses cached bounded JPEG previews rather than raw photos.
