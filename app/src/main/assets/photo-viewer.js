@@ -86,6 +86,7 @@ showPhoto=function(photos,index){
 // System photos use a higher-resolution, bounded native decode only inside the full-screen viewer.
 function fullResolutionPhotoSource(photo){
  const src=photo?.src;
+ if(hasOriginal(photo))return localPoster(photo.originalId)+'?size=full';
  if(isVideo(photo)||typeof src!=='string')return src;
  return /^https:\/\/flipyear\.local\/media\/[0-9]+\?v=[0-9]+$/.test(src)?src+'&size=full':src;
 }

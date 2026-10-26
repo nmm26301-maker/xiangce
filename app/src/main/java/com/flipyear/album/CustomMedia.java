@@ -21,13 +21,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Private video copies and self-contained album archives, transported through SAF. */
 public final class CustomMedia {
-    private static final int PICK = 211, EXPORT = 212, RESTORE = 213;
+    private static final int PICK = 211, EXPORT = 212, RESTORE = 213, PHOTOS = 214, PAIR = 216;
     private final Activity activity;
     private final MediaLibrary.Callback sink;
     // One application-wide queue also protects copies during Activity recreation.
     private static final ThreadPoolExecutor worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     private static final AtomicBoolean busy = new AtomicBoolean();
-    private String target, archive;
+    private String target, pairPage;
+    private int pickerCode;
     private volatile String pendingToken;
 
     CustomMedia(Activity owner, MediaLibrary.Callback callback) {
@@ -45,15 +46,29 @@ public final class CustomMedia {
     }
 
     private File resultFile(String token) { return new File(activity.getFilesDir(), "album-result-" + token + ".json"); }
-    void restoreTarget(android.os.Bundle saved) { if (saved != null) target = saved.getString("albumVideoTarget"); }
-    void saveTarget(android.os.Bundle out) { out.putString("albumVideoTarget", target); }
+    void restoreTarget(android.os.Bundle saved) {
+        if (saved != null) {
+            target = saved.getString("albumVideoTarget"); pairPage = saved.getString("albumPairPage");
+            pickerCode = saved.getInt("albumPickerCode", 0);
+            if (pickerCode != 0) busy.set(true);
+        }
+    }
+    void saveTarget(android.os.Bundle out) {
+        out.putString("albumVideoTarget", target); out.putString("albumPairPage", pairPage);
+        out.putInt("albumPickerCode", pickerCode);
+    }
+    private File exportDraft() { return new File(activity.getFilesDir(), "album-export-draft.json"); }
     private boolean claim() { return busy.compareAndSet(false, true); }
     private void error(String message) {
         busy.set(false);
         sink.script("window.onAlbumMediaError && window.onAlbumMediaError(" + JSONObject.quote(message) + ")");
     }
     private void launch(Intent intent, int code) {
-        activity.runOnUiThread(() -> { try { activity.startActivityForResult(intent, code); } catch (Exception e) { error("系统文件选择器不可用"); } });
+        activity.runOnUiThread(() -> {
+            pickerCode = code;
+            try { activity.startActivityForResult(intent, code); }
+            catch (Exception e) { pickerCode = 0; if (code == EXPORT) exportDraft().delete(); error("系统文件选择器不可用"); }
+        });
     }
 
     @JavascriptInterface public void chooseVideos(String bookId) {
@@ -68,11 +83,76 @@ public final class CustomMedia {
         worker.execute(() -> {
             try {
                 if (json == null || json.getBytes(StandardCharsets.UTF_8).length > AlbumArchive.MAX_MANIFEST) throw new IOException("相册说明超过 32MB，请逐本导出");
-                referenced(new JSONObject(json)); archive = json;
+                referenced(new JSONObject(json));
+                File temp = File.createTempFile("album-export-", ".tmp", activity.getFilesDir());
+                try {
+                    try (FileOutputStream out = new FileOutputStream(temp)) { out.write(json.getBytes(StandardCharsets.UTF_8)); out.getFD().sync(); }
+                    if (!temp.renameTo(exportDraft())) throw new IOException("无法保留备份会话");
+                } finally { temp.delete(); }
                 launch(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/zip")
                     .putExtra(Intent.EXTRA_TITLE, "FlipYear-" + new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date()) + ".zip"), EXPORT);
-            } catch (Exception e) { error("备份无法准备：" + e.getMessage()); }
+            } catch (Exception e) { exportDraft().delete(); error("备份无法准备：" + e.getMessage()); }
         });
+    }
+
+    @JavascriptInterface public void choosePhotos(String bookId) {
+        if (!claim()) { sink.script("window.onAlbumMediaError('请先完成当前媒体操作')"); return; }
+        if (bookId == null || bookId.isEmpty() || bookId.length() > 100) { error("相册编号无效"); return; }
+        target = bookId;
+        launch(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*").putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true), PHOTOS);
+    }
+
+    @JavascriptInterface public void pairVideo(String bookId, String pageId) {
+        if (!claim()) { sink.script("window.onAlbumMediaError('请先完成当前媒体操作')"); return; }
+        if (bookId == null || bookId.isEmpty() || bookId.length() > 100 || pageId == null || pageId.isEmpty() || pageId.length() > 100) { error("照片编号无效"); return; }
+        target = bookId; pairPage = pageId;
+        launch(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("video/*"), PAIR);
+    }
+
+    private void importPhotos(String book, List<Uri> sources) {
+        List<File> created = new ArrayList<>();
+        try {
+            if (book == null || sources.isEmpty() || sources.size() > 20) throw new IOException("每批请选择 1–20 张原图");
+            JSONArray pages = new JSONArray(); long total = 0;
+            for (int i = 0; i < sources.size(); i++) {
+                Uri uri = sources.get(i); if (!"content".equals(uri.getScheme())) throw new IOException("请选择系统原文件");
+                sink.script("window.onAlbumMediaProgress(" + (i + 1) + "," + sources.size() + ")");
+                String id = "local-photo-" + UUID.randomUUID(); File dest = file(activity, id);
+                if (!dest.createNewFile()) throw new IOException("无法创建原图副本"); created.add(dest);
+                try (InputStream in = activity.getContentResolver().openInputStream(uri); FileOutputStream out = new FileOutputStream(dest)) {
+                    long size = AlbumArchive.copy(in, out, Math.min(AlbumArchive.MAX_VIDEO, AlbumArchive.MAX_TOTAL - total));
+                    if (size == 0) throw new IOException("原文件为空"); total += size; out.getFD().sync();
+                }
+                android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeFile(dest.getAbsolutePath(), bounds);
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outMimeType == null) throw new IOException("系统无法预览该照片格式，原文件未修改");
+                String name = "照片";
+                try (Cursor c = activity.getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null)) { if (c != null && c.moveToFirst()) name = c.getString(0); }
+                JSONArray dates = new MediaLibrary(activity, sink).selectedMetadata(new Uri[] {uri});
+                JSONObject page = new JSONObject().put("id", UUID.randomUUID().toString()).put("kind", "photo").put("originalId", id)
+                    .put("originalBytes", dest.length()).put("originalSha256", OriginalBytes.sha256(dest)).put("originalMime", bounds.outMimeType)
+                    .put("width", bounds.outWidth).put("height", bounds.outHeight).put("src", posterUrl(id)).put("caption", "").put("layout", "classic")
+                    .put("filename", name == null ? "照片" : name.substring(0, Math.min(name.length(), 500))).put("date", dates.getJSONObject(0).optString("date"));
+                pages.put(page);
+            }
+            emit(new JSONObject().put("type", "importPhotos").put("target", book).put("pages", pages), created);
+        } catch (Exception e) { for (File f : created) f.delete(); error("原图导入失败：" + e.getMessage()); }
+    }
+
+    private void verifyOriginals(JSONObject manifest, Map<String, File> files) throws Exception {
+        JSONArray books = manifest.getJSONArray("books"); Map<String, String> checked = new HashMap<>();
+        for (int b = 0; b < books.length(); b++) {
+            JSONArray pages = books.getJSONObject(b).getJSONArray("pages");
+            for (int p = 0; p < pages.length(); p++) {
+                JSONObject page = pages.getJSONObject(p);
+                if (page.has("originalId")) {
+                    String id = page.getString("originalId");
+                    File file = files.get(id); if (file == null) throw new IOException("原文件缺失");
+                    if (!checked.containsKey(id)) checked.put(id, OriginalBytes.sha256(file));
+                    if (file.length() != page.getLong("originalBytes") || !checked.get(id).equals(page.getString("originalSha256"))) throw new IOException("原文件完整性校验失败");
+                }
+            }
+        }
     }
 
     @JavascriptInterface public void restoreArchive() {
@@ -121,26 +201,29 @@ public final class CustomMedia {
     }
 
     boolean handleResult(int code, int result, Intent data) {
-        if (code != PICK && code != EXPORT && code != RESTORE) return false;
+        if (code != PICK && code != EXPORT && code != RESTORE && code != PHOTOS && code != PAIR) return false;
+        pickerCode = 0;
         busy.set(true);
-        if (result != Activity.RESULT_OK || data == null) { archive = null; error("操作已取消，现有相册保留"); return true; }
-        if (code == PICK) {
+        if (result != Activity.RESULT_OK || data == null) { if (code == EXPORT) exportDraft().delete(); error("操作已取消，现有相册保留"); return true; }
+        if (code == PICK || code == PHOTOS || code == PAIR) {
             List<Uri> sources = new ArrayList<>();
             if (data.getClipData() != null) for (int i = 0; i < data.getClipData().getItemCount(); i++) sources.add(data.getClipData().getItemAt(i).getUri());
             else if (data.getData() != null) sources.add(data.getData());
-            final String book = target; worker.execute(() -> importVideos(book, sources));
-        } else if (data.getData() == null) { error("没有选择文件"); }
+            final String book = target, paired = code == PAIR ? pairPage : null;
+            if (code == PHOTOS) worker.execute(() -> importPhotos(book, sources));
+            else worker.execute(() -> importVideos(book, sources, paired));
+        } else if (data.getData() == null) { if (code == EXPORT) exportDraft().delete(); error("没有选择文件"); }
         else if (code == EXPORT) {
-            final String manifest = archive; archive = null; final Uri destination = data.getData();
-            worker.execute(() -> export(manifest, destination));
+            final Uri destination = data.getData();
+            worker.execute(() -> export(destination));
         } else { final Uri source = data.getData(); worker.execute(() -> restore(source)); }
         return true;
     }
 
-    private void importVideos(String book, List<Uri> sources) {
+    private void importVideos(String book, List<Uri> sources, String paired) {
         List<File> created = new ArrayList<>();
         try {
-            if (book == null || sources.isEmpty() || sources.size() > 20) throw new IOException("每批请选择 1–20 段视频");
+            if (book == null || sources.isEmpty() || sources.size() > 20 || paired != null && sources.size() != 1) throw new IOException("每批请选择 1–20 段视频");
             JSONArray pages = new JSONArray(); long total = 0;
             for (int i = 0; i < sources.size(); i++) {
                 Uri uri = sources.get(i);
@@ -158,7 +241,7 @@ public final class CustomMedia {
                 catch (Exception ignored) { }
                 p.put("filename", name == null ? "视频" : name.substring(0, Math.min(500, name.length()))); pages.put(p);
             }
-            JSONObject payload = new JSONObject().put("type", "import").put("target", book).put("pages", pages);
+            JSONObject payload = new JSONObject().put("type", paired == null ? "import" : "pair").put("pageId", paired).put("target", book).put("pages", pages);
             emit(payload, created);
         } catch (Exception e) { for (File f : created) f.delete(); error("视频导入失败：" + e.getMessage()); }
     }
@@ -194,30 +277,46 @@ public final class CustomMedia {
     }
 
     private Set<String> referenced(JSONObject manifest) throws Exception {
-        if (!"flipyear".equals(manifest.optString("format")) || manifest.optInt("version") != 2) throw new IOException("备份格式无效");
+        if (!"flipyear".equals(manifest.optString("format")) || (manifest.optInt("version") != 2 && manifest.optInt("version") != 3)) throw new IOException("备份格式无效");
         JSONArray books = manifest.getJSONArray("books"); if (books.length() > 200) throw new IOException("相册数量超限");
         Set<String> ids = new LinkedHashSet<>(); int total = 0;
         for (int b = 0; b < books.length(); b++) {
             JSONArray pages = books.getJSONObject(b).getJSONArray("pages"); total += pages.length();
             if (pages.length() > 1000 || total > 3000) throw new IOException("照片页数量超限");
-            for (int p = 0; p < pages.length(); p++) if ("video".equals(pages.getJSONObject(p).optString("kind"))) {
-                String id = pages.getJSONObject(p).getString("videoId"); if (!AlbumArchive.validId(id)) throw new IOException("视频编号无效"); ids.add(id);
+            for (int p = 0; p < pages.length(); p++) {
+                JSONObject page = pages.getJSONObject(p);
+                if ("video".equals(page.optString("kind"))) {
+                    String id = page.getString("videoId"); if (!AlbumArchive.videoId(id)) throw new IOException("视频编号无效"); ids.add(id);
+                }
+                if (page.has("originalId")) {
+                    String id = page.getString("originalId");
+                    if ("video".equals(page.optString("kind")) || manifest.optInt("version") != 3 || !AlbumArchive.photoId(id) || !page.optString("originalSha256").matches("[0-9a-f]{64}") || page.optLong("originalBytes") <= 0) throw new IOException("原图引用无效");
+                    ids.add(id);
+                }
+                if (page.has("liveVideoId")) {
+                    String id = page.getString("liveVideoId");
+                    if ("video".equals(page.optString("kind")) || manifest.optInt("version") != 3 || !AlbumArchive.videoId(id)) throw new IOException("实况视频引用无效"); ids.add(id);
+                }
             }
         }
-        if (ids.size() > AlbumArchive.MAX_FILES) throw new IOException("单份备份最多 200 个视频");
+        if (ids.size() > AlbumArchive.MAX_FILES) throw new IOException("单份备份最多 200 个媒体原文件，请分册导出");
         return ids;
     }
 
-    private void export(String json, Uri destination) {
+    private void export(Uri destination) {
         try {
-            if (json == null) throw new IOException("备份会话已结束，请重新导出");
+            ByteArrayOutputStream manifest = new ByteArrayOutputStream();
+            try (InputStream in = new FileInputStream(exportDraft())) { AlbumArchive.copy(in, manifest, AlbumArchive.MAX_MANIFEST); }
+            String json = new String(manifest.toByteArray(), StandardCharsets.UTF_8);
             Map<String, File> files = new LinkedHashMap<>(); for (String id : referenced(new JSONObject(json))) files.put(id, file(activity, id));
+            verifyOriginals(new JSONObject(json), files);
             try (OutputStream out = activity.getContentResolver().openOutputStream(destination, "wt")) {
                 if (out == null) throw new IOException("无法打开保存位置");
                 AlbumArchive.write(out, json.getBytes(StandardCharsets.UTF_8), files);
             }
             busy.set(false); sink.script("window.onAlbumArchiveSaved && window.onAlbumArchiveSaved()");
-        } catch (Exception e) { error("视频备份未保存：" + e.getMessage()); }
+        } catch (Exception e) { error("媒体备份未保存：" + e.getMessage()); }
+        finally { exportDraft().delete(); }
     }
 
     private void restore(Uri source) {
@@ -231,9 +330,9 @@ public final class CustomMedia {
                     catch (Exception e) { throw new IOException("备份说明无效", e); }
                 });
             }
-            JSONObject backup = new JSONObject(new String(restored.manifest, StandardCharsets.UTF_8)); Map<String, String> remap = new HashMap<>();
+            JSONObject backup = new JSONObject(new String(restored.manifest, StandardCharsets.UTF_8)); verifyOriginals(backup, restored.files); Map<String, String> remap = new HashMap<>();
             for (Map.Entry<String, File> item : restored.files.entrySet()) {
-                String id = "local-video-" + UUID.randomUUID(); File dest = file(activity, id);
+                String id = (AlbumArchive.photoId(item.getKey()) ? "local-photo-" : "local-video-") + UUID.randomUUID(); File dest = file(activity, id);
                 if (dest.exists() || !item.getValue().renameTo(dest)) throw new IOException("无法提交恢复的视频");
                 committed.add(dest); remap.put(item.getKey(), id);
             }
@@ -243,6 +342,8 @@ public final class CustomMedia {
                 for (int p = 0; p < pages.length(); p++) {
                     JSONObject page = pages.getJSONObject(p);
                     if ("video".equals(page.optString("kind"))) { String id = remap.get(page.getString("videoId")); page.put("videoId", id).put("src", posterUrl(id)); }
+                    if (page.has("originalId")) { String id = remap.get(page.getString("originalId")); page.put("originalId", id).put("src", posterUrl(id)); }
+                    if (page.has("liveVideoId")) page.put("liveVideoId", remap.get(page.getString("liveVideoId")));
                 }
             }
             emit(new JSONObject().put("type", "restore").put("backup", backup), committed);
@@ -261,20 +362,28 @@ public final class CustomMedia {
             List<String> segments = uri.getPathSegments();
             if (segments.size() != 3 || !"custom-media".equals(segments.get(0)) || !"poster".equals(segments.get(2))) throw new IOException("预览路径无效");
             String id = segments.get(1); File source = file(activity, id); if (!source.isFile()) throw new IOException("视频副本不可用");
-            int edge = "thumb".equals(uri.getQueryParameter("size")) ? 320 : 640;
-            File cached = new File(activity.getCacheDir(), id + "-" + edge + ".jpg");
+            boolean photo = AlbumArchive.photoId(id);
+            android.app.ActivityManager memory = (android.app.ActivityManager) activity.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+            int fullEdge = memory != null && memory.isLowRamDevice() ? 2048 : 3072;
+            int edge = "thumb".equals(uri.getQueryParameter("size")) ? 320 : photo ? ("full".equals(uri.getQueryParameter("size")) ? fullEdge : 1600) : 640;
+            File previews = new File(activity.getCacheDir(), "album-previews");
+            if (!previews.isDirectory() && !previews.mkdirs()) throw new IOException("无法创建预览缓存");
+            File cached = new File(previews, id + "-" + edge + ".jpg"); boolean generated = !cached.isFile();
             if (!cached.isFile()) {
                 Bitmap image;
-                if (Build.VERSION.SDK_INT >= 27) {
+                if (photo) image = PhotoDecoder.decode(activity.getContentResolver(), Uri.fromFile(source), edge);
+                else if (Build.VERSION.SDK_INT >= 27) {
                     MediaMetadataRetriever r = new MediaMetadataRetriever();
                     try { r.setDataSource(source.getAbsolutePath()); image = r.getScaledFrameAtTime(-1, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, edge, edge); } finally { r.release(); }
                 } else image = ThumbnailUtils.createVideoThumbnail(source.getAbsolutePath(), android.provider.MediaStore.Video.Thumbnails.MINI_KIND);
                 if (image == null) throw new IOException("视频封面不可用");
-                File temp = File.createTempFile("album-poster-", ".jpg", activity.getCacheDir());
+                File temp = File.createTempFile("album-poster-", ".jpg", previews);
                 try { try (OutputStream out = new FileOutputStream(temp)) { if (!image.compress(Bitmap.CompressFormat.JPEG, 85, out)) throw new IOException("封面生成失败"); } if (!temp.renameTo(cached) && !cached.isFile()) throw new IOException("封面保存失败"); }
                 finally { image.recycle(); temp.delete(); }
             }
-            return new WebResourceResponse("image/jpeg", null, new FileInputStream(cached));
+            FileInputStream stream = new FileInputStream(cached);
+            if (generated || "full".equals(uri.getQueryParameter("size"))) MediaLibrary.trimPreviewCache(previews, cached);
+            return new WebResourceResponse("image/jpeg", null, stream);
         } catch (Exception e) { return new WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", Collections.emptyMap(), new ByteArrayInputStream(new byte[0])); }
     }
     void close() { /* In-flight SAF work belongs to the application-wide queue. */ }

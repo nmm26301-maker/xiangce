@@ -70,7 +70,7 @@ const path=require('node:path');
  }
  await p.keyboard.press('Escape');assert.equal(await p.evaluate(()=>document.body.classList.contains('lock')),false);
  await p.locator('[data-tab="settings"]').click();await p.locator('#nightMode').uncheck();
- await p.locator('#engineInfo').click();assert.match(await p.locator('.viewer-license').textContent(),/Permission is hereby granted/);
+ await p.locator('#engineInfo').click();assert.match(await p.locator('.viewer-license').first().textContent(),/Permission is hereby granted/);
  await p.keyboard.press('Escape');
  assert.deepEqual(errors,[]);await browser.close();
  console.log('PASS custom/day/timeline photo taps, real pinch + double tap, mouse zoom + pan, reset, viewer-only arrows, original page + focus restoration, keyboard trap, responsive controls, bundled MIT notice.');

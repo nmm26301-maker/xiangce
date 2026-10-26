@@ -34,6 +34,8 @@ jobs:
         run: |
           node --check app/src/main/assets/yearbook.js
           node --check app/src/main/assets/photo-viewer.js
+          node --check app/src/main/assets/original-media.js
+          node --check app/src/main/assets/webgl-yearbook.js
           node --check tests/yearbook.cjs
       - name: Java policy regression tests
         run: bash tests/native-policy.sh
@@ -47,6 +49,8 @@ jobs:
           node tests/widgets.cjs
           node tests/videos.cjs
           node tests/custom-videos.cjs
+          node tests/original-media.cjs
+          node tests/webgl-yearbook.cjs
       - name: Resolve APK version
         run: |
           version=$(python3 -c "import xml.etree.ElementTree as e; print(e.parse('app/src/main/AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName'])")

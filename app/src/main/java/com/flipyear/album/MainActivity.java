@@ -25,6 +25,7 @@ public final class MainActivity extends Activity {
     private String pendingBackup;
     private MediaLibrary mediaLibrary;
     private CustomMedia customMedia;
+    private OriginalMedia originalMedia;
     private String previousAccess = "";
     private boolean launchingVideo;
     private volatile int pendingWidgetId;
@@ -59,6 +60,8 @@ public final class MainActivity extends Activity {
         mediaLibrary = new MediaLibrary(this, code -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); }));
         customMedia = new CustomMedia(this, code -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); }));
         customMedia.restoreTarget(savedInstanceState);
+        originalMedia = new OriginalMedia(this, code -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); }));
+        originalMedia.restoreState(savedInstanceState); web.addJavascriptInterface(originalMedia, "PhotoMedia");
         web.addJavascriptInterface(new BackupBridge(), "Android");
         web.addJavascriptInterface(customMedia, "AlbumMedia");
         web.setWebViewClient(new WebViewClient() {
@@ -113,7 +116,7 @@ public final class MainActivity extends Activity {
         public void playVideo(String mediaId) {
             runOnUiThread(() -> {
                 if (launchingVideo) return;
-                if (MediaPolicy.videoId(mediaId) < 0 && !AlbumArchive.validId(mediaId)) { videoError(); return; }
+                if (MediaPolicy.videoId(mediaId) < 0 && !AlbumArchive.videoId(mediaId)) { videoError(); return; }
                 try {
                     launchingVideo = true;
                     startActivity(new Intent(MainActivity.this, VideoPlayerActivity.class).putExtra(VideoPlayerActivity.MEDIA_ID, mediaId));
@@ -238,6 +241,7 @@ public final class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("pendingWidgetId", pendingWidgetId);
         if (customMedia != null) customMedia.saveTarget(out);
+        if (originalMedia != null) originalMedia.saveState(out);
     }
 
     private void notifySaved(boolean success) {
@@ -248,6 +252,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (originalMedia != null && originalMedia.handleResult(requestCode, resultCode, data)) return;
         if (customMedia != null && customMedia.handleResult(requestCode, resultCode, data)) return;
         if (requestCode == PICK_PHOTOS && picker != null) {
             Uri[] values = null;

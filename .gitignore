@@ -8,3 +8,6 @@ app/build/
 tests/roundtrip.json
 
 !releases/*.apk
+
+third_party/webgl/node_modules/
+device-reports/

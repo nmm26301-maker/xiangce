@@ -165,21 +165,17 @@ final class MediaLibrary {
 
     // The full-resolution tier uses cached bounded JPEG previews rather than raw photos.
     // Trim only when the viewer requests detail to avoid O(n) scans for calendar thumbnails.
-    private void trimPreviewCache(File folder, File active) {
-        synchronized (this) {
-            File[] photos = folder.listFiles((dir, name) -> name.endsWith(".jpg"));
-            if (photos == null) return;
-            long bytes = 0;
-            for (File file : photos) bytes += file.length();
-            active.setLastModified(System.currentTimeMillis());
-            java.util.Arrays.sort(photos, (left, right) -> Long.compare(left.lastModified(), right.lastModified()));
-            final long budget = 160L * 1024L * 1024L;
-            for (File file : photos) {
-                if (bytes <= budget) break;
-                if (file.equals(active)) continue;
-                long length = file.length();
-                if (file.delete()) bytes -= length;
-            }
+    static synchronized void trimPreviewCache(File folder, File active) {
+        File[] photos = folder.listFiles((dir, name) -> name.endsWith(".jpg"));
+        if (photos == null) return;
+        long bytes = 0; for (File file : photos) bytes += file.length();
+        active.setLastModified(System.currentTimeMillis());
+        java.util.Arrays.sort(photos, (left, right) -> Long.compare(left.lastModified(), right.lastModified()));
+        final long budget = 160L * 1024L * 1024L;
+        for (File file : photos) {
+            if (bytes <= budget) break;
+            if (file.equals(active)) continue;
+            long length = file.length(); if (file.delete()) bytes -= length;
         }
     }
 

@@ -1,0 +1,1 @@
+turngl Book3D 摘自未修改上游 src/index.js 的 Book3D 部分，commit f551279ad0b381340959907093a587eab9bd1f51，MIT。未包含 PDF.js 或网络加载组件。Three.js 0.180.0，MIT。应用适配、纹理、触摸和资源清理在 app/src/main/assets/webgl-yearbook.js。重建：npm install --prefix third_party/webgl --ignore-scripts；node scripts/build-webgl.cjs。

@@ -90,3 +90,19 @@
 - npm tarball SHA-512 与注册表 integrity 核对一致；发行脚本、package.json、完整 MIT 许可在 third_party/panzoom；APK 与单文件网页内置许可，无 CDN 请求。
 - 日期与照片点击按 Pointer Events 的最大移动量区分轻点／拖动，多指取消轻点。主题书的可访问按钮语义不会屏蔽翻页拖动；视频播放按钮独立拦截 pointerdown。
 - 对照 [FlipYear 官方](https://flipyear.app/)的年度书架和月历宣传截图，调整相邻月份纸层、圆角及有效周数；只参考布局，未复制其商业素材／代码，不声明视觉完全一致。
+
+
+## v2.6 原文件、实况与 WebGL（2026-10-26）
+
+| 项目 | 维护／许可证 | 实现、依赖与已知限制 | 本次取舍 |
+|---|---|---|---|
+| [google/libmotionphoto](https://github.com/google/libmotionphoto) | pushed_at 2026-10-26；Apache-2.0 | 官方 JPEG / HEIC / AVIF 解析、提取、构建；Java API 通过 JNI 调用 C++17，需 CMake / NDK 和 image_io、mp4v2 等原生代码；格式插件处理旧 MicroVideo，文档建议对不可信解析作隔离 | 参考公开接口、边界检查与原件／视频分离设计。当前无 JNI 构建链，本次只按官方格式实现有界 JPEG 子集；未复制库代码，不宣称支持全部厂商格式 |
+| [WeiErLiTeo/MotionCraft](https://github.com/WeiErLiTeo/MotionCraft) | pushed_at 2026-10-01；Apache-2.0 | Kotlin / Compose / Room / Coil / Media3 / JNI 等完整应用依赖；支持实况浏览与转换，但设备编解码与资源是否完整仍是前提 | 参考静态照片与动态视频分开保存、主动播放的设计，不移植整套依赖，不从单张照片伪造实况 |
+| [oguzhanT/turngl](https://github.com/oguzhanT/turngl/tree/f551279ad0b381340959907093a587eab9bd1f51) | pushed_at 2026-04-10；MIT；固定 f551279 | Book3D 将 Canvas 映射到分段 PlaneGeometry，按圆柱路径弯曲顶点并更新法线；依赖 Three.js。其 PDF 组件会加载网络 PDF.js，持续渲染循环、动画不可取消及资源清理需由集成方处理 | 仅提取未修改的 Book3D 源码，完全排除 PDF 组件；第一方适配器负责本地月历纹理、可取消手势、透视日期命中、按需绘制和完整 GPU 释放；未复制商业 FlipYear 资产 |
+| [mrdoob/three.js](https://github.com/mrdoob/three.js) | pushed_at 2026-10-26；MIT；固定 npm 0.180.0 | WebGL 2 渲染器、相机、曲面、纹理与射线；旧设备缺少 WebGL 2，不能假定所有 WebView 都能运行 | 离线打包 0.180.0，与固定 Book3D 验证；失败／上下文丢失回退到原 MPL 兼容引擎。没有运行时 CDN、PDF 解析或联网请求 |
+
+- 格式依据：[Android Motion Photo 1.0](https://developer.android.com/media/platform/motion-photo-format)。JPEG APP1 XMP 按命名空间读取；现代 Container:Directory 从文件尾倒推条目 Length / Padding，现代声明优先于旧 MicroVideoOffset。读取元数据最多 1MiB／512 段；XML 禁用外部实体；视频范围最多 250MiB，检查 MP4 顶层盒边界与必要标识。HEIC／AVIF、扩展 XMP、Samsung SEF 和 Apple 内容标识符自动配对不在该子集内。
+- 独立 MOV / MP4 配对由用户确认，不靠同名文件自动合并；视频是否实际可解码仍由设备验证。
+- 原图复制采用有界流式 I/O + fsync，记录大小与 SHA-256；预览有界解码另存缓存。版本 3 ZIP 包含原文件、关联视频与清单，继承路径白名单、CRC、解压总量限制与回滚；恢复原图再核对长度和哈希。无第三方归档代码。
+- 原 turngl / Three.js 源码说明和完整 MIT 许可证位于 third_party/webgl；合并 bundle 与 APK 设置中保留声明。scripts/build-webgl.cjs 可重建离线 bundle。MPL 引擎及源码出口保持原协议。
+- WebGL 在 Chromium 软件 GPU 验证真实顶点深度、射线选取、拖动和上下文恢复；不是手机 GPU 帧率报告。实际品牌／型号、系统照片提供者、HEVC / MOV 解码、权限和升级尚需真实设备。

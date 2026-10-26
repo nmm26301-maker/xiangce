@@ -1,0 +1,1 @@
+motion-video.mp4 是本项目生成的 24×24 黑色视频测试载荷（H.264，2 帧，1 秒，无音频）。不包含第三方影像。生成命令：ffmpeg -f lavfi -i color=c=black:s=24x24:r=2:d=1 -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart motion-video.mp4。它用于文件格式与提取一致性测试，不代替 Android 编解码测试。

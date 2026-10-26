@@ -19,8 +19,11 @@ final class AlbumArchive {
     private AlbumArchive() { }
 
     static boolean validId(String id) {
-        return id != null && id.matches("local-video-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
+        return id != null && id.matches("local-(?:video|photo)-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
     }
+
+    static boolean photoId(String id) { return validId(id) && id.startsWith("local-photo-"); }
+    static boolean videoId(String id) { return validId(id) && id.startsWith("local-video-"); }
 
     static long copy(InputStream in, OutputStream out, long limit) throws IOException {
         if (in == null || out == null || limit < 0) throw new IOException("无法打开文件");
@@ -38,7 +41,7 @@ final class AlbumArchive {
         long total = manifest.length;
         for (Map.Entry<String, File> item : files.entrySet()) {
             File file = item.getValue();
-            if (!validId(item.getKey()) || !file.isFile() || file.length() == 0 || file.length() > MAX_VIDEO) throw new IOException("备份视频缺失或过大");
+            if (!validId(item.getKey()) || !file.isFile() || file.length() == 0 || file.length() > MAX_VIDEO) throw new IOException("备份媒体原文件缺失或过大");
             total += file.length();
             if (total > MAX_TOTAL) throw new IOException("单份备份最多 512MB，请逐本导出");
         }
@@ -67,20 +70,20 @@ final class AlbumArchive {
             ByteArrayOutputStream json = new ByteArrayOutputStream(); copy(zip, json, MAX_MANIFEST); zip.closeEntry();
             byte[] manifest = json.toByteArray();
             Set<String> expected = validator.validate(manifest);
-            if (expected == null || expected.size() > MAX_FILES) throw new IOException("视频数量超限");
-            for (String id : expected) if (!validId(id)) throw new IOException("视频编号无效");
+            if (expected == null || expected.size() > MAX_FILES) throw new IOException("媒体数量超限");
+            for (String id : expected) if (!validId(id)) throw new IOException("媒体编号无效");
             long total = manifest.length; ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (!name.startsWith("media/") || !name.endsWith(".bin") || entry.isDirectory()) throw new IOException("备份包含未知文件");
                 String id = name.substring(6, name.length() - 4);
-                if (!validId(id) || !expected.contains(id) || files.containsKey(id)) throw new IOException("备份视频不匹配或重复");
+                if (!validId(id) || !expected.contains(id) || files.containsKey(id)) throw new IOException("备份媒体原文件不匹配或重复");
                 File target = new File(staging, id + ".bin");
                 if (!target.getCanonicalPath().startsWith(staging.getCanonicalPath() + File.separator) || !target.createNewFile()) throw new IOException("恢复路径无效");
                 files.put(id, target);
                 try (FileOutputStream out = new FileOutputStream(target)) {
                     long size = copy(zip, out, Math.min(MAX_VIDEO, MAX_TOTAL - total));
-                    if (size == 0) throw new IOException("备份视频为空");
+                    if (size == 0) throw new IOException("备份媒体原文件为空");
                     total += size; out.getFD().sync();
                 }
                 zip.closeEntry();

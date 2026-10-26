@@ -25,6 +25,7 @@ public final class VideoPlayerActivity extends Activity {
     private int position;
     private boolean active, prepared, loaded, failed;
     private boolean initialPlay = true;
+    private String motionId;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -32,7 +33,9 @@ public final class VideoPlayerActivity extends Activity {
         getWindow().setNavigationBarColor(0xff101011);
         getWindow().getDecorView().setSystemUiVisibility(0);
         String mediaId = getIntent().getStringExtra(MEDIA_ID);
-        if (AlbumArchive.validId(mediaId)) {
+        if (OriginalMedia.motionId(mediaId)) {
+            try { motionId = mediaId; source = Uri.fromFile(OriginalMedia.motionFile(this, mediaId)); } catch (java.io.IOException e) { finish(); return; }
+        } else if (AlbumArchive.videoId(mediaId)) {
             try { source = Uri.fromFile(CustomMedia.file(this, mediaId)); }
             catch (java.io.IOException e) { finish(); return; }
         } else {
@@ -93,6 +96,11 @@ public final class VideoPlayerActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         out.putInt("position", video != null && prepared ? Math.max(0, video.getCurrentPosition()) : position);
+    }
+
+    @Override protected void onDestroy() {
+        if (isFinishing() && motionId != null) { try { OriginalMedia.motionFile(this, motionId).delete(); } catch (java.io.IOException ignored) { } }
+        super.onDestroy();
     }
 
     private void showError() {
