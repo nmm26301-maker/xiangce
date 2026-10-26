@@ -47,12 +47,16 @@ jobs:
           node tests/widgets.cjs
           node tests/videos.cjs
           node tests/custom-videos.cjs
+      - name: Resolve APK version
+        run: |
+          version=$(python3 -c "import xml.etree.ElementTree as e; print(e.parse('app/src/main/AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName'])")
+          echo "FLIPYEAR_VERSION=$version" >> "$GITHUB_ENV"
       - name: Build signed development APK
         run: bash build-android.sh
       - name: Upload verified development APK
         uses: actions/upload-artifact@v4
         with:
-          name: FlipYear-v2.5.0-debug-apk
-          path: FlipYear-v2.5.0.apk
+          name: FlipYear-v${{ env.FLIPYEAR_VERSION }}-debug-apk
+          path: FlipYear-v${{ env.FLIPYEAR_VERSION }}.apk
           if-no-files-found: error
           retention-days: 7
