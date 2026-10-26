@@ -18,9 +18,12 @@ jobs:
           java-version: '17'
       - name: Install Android SDK components
         run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          manager=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          test -x "$manager"
+          yes | "$manager" --licenses >/dev/null || true
+          "$manager" "platforms;android-35" "build-tools;35.0.0"
       - name: Generate web edition
         run: python3 scripts/build-web.py
       - name: JavaScript syntax
