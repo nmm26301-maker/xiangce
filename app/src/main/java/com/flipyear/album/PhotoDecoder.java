@@ -18,8 +18,11 @@ final class PhotoDecoder {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
         try (InputStream stream = resolver.openInputStream(source)) { BitmapFactory.decodeStream(stream, null, options); }
+        int largest = Math.max(options.outWidth, options.outHeight);
+        if (largest <= 0 || edge < 64 || edge > 3072) throw new IOException("Invalid photo dimensions");
         int sample = 1;
-        while (Math.max(options.outWidth, options.outHeight) / (sample * 2) >= edge) sample *= 2;
+        // Avoid decoding a gigantic intermediate bitmap before downscaling.
+        while ((double) largest / sample > edge * 1.5 && sample <= 16384) sample *= 2;
         options.inSampleSize = sample;
         options.inJustDecodeBounds = false;
         Bitmap image;
