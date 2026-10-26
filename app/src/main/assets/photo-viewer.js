@@ -93,8 +93,13 @@ const updatePhoto=updatePhotoViewer;
 updatePhotoViewer=function(){
  destroyPhotoZoom();lastPhotoTap=null;photoPointers.clear();
  updatePhoto();
+ const previewSource=photoSet[photoAt]?.src;
  const detailedSource=fullResolutionPhotoSource(photoSet[photoAt]);
- if(fullPhoto.getAttribute('src')!==detailedSource)fullPhoto.src=detailedSource;
+ if(detailedSource!==previewSource){
+  const standardError=fullPhoto.onerror;
+  fullPhoto.onerror=()=>{fullPhoto.onerror=standardError;fullPhoto.src=previewSource;};
+  fullPhoto.src=detailedSource;
+ }
  fullPhoto.setAttribute('aria-label',isVideo(photoSet[photoAt])?'视频封面，可双击缩放':'照片，可双击缩放');
  // A cached image may already be complete when switching between duplicate photos.
  if(fullPhoto.complete&&fullPhoto.naturalWidth)photoZoomFrame=requestAnimationFrame(initPhotoZoom);
