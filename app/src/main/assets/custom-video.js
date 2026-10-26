@@ -9,7 +9,7 @@ function videoIdentifier(p){return p.videoId||p.id;}
 function launchAlbumVideo(p){const id=videoIdentifier(p);if(!isVideo(p)||(!localVideoId(id)&&!/^device-video-[1-9][0-9]{0,18}$/.test(id||''))||/[\r\n]/.test(id||'')){showToast('视频索引无效，请重新导入或扫描。',true);return;}if(!globalThis.Android?.playVideo){showToast('视频播放在 Android APK 中使用。');return;}try{Android.playVideo(id);}catch{onNativeVideoError();}}
 $('playVideo').onclick=()=>launchAlbumVideo(photoSet[photoAt]);
 const photoPageNode=pageNode;
-pageNode=function(p,index){const node=photoPageNode(p,index);if(isVideo(p)){node.classList.add('video-page');const button=el('button','primary video-page-play','▶ 播放视频 · '+durationText(p.durationMs));button.type='button';button.onclick=e=>{e.preventDefault();e.stopPropagation();launchAlbumVideo(p);};node.append(button);}return node;};
+pageNode=function(p,index){const node=photoPageNode(p,index);if(isVideo(p)){node.classList.add('video-page');const button=el('button','primary video-page-play','▶ 播放视频 · '+durationText(p.durationMs));button.type='button';button.onpointerdown=e=>e.stopPropagation();button.onclick=e=>{e.preventDefault();e.stopPropagation();launchAlbumVideo(p);};node.append(button);}return node;};
 const photoThumbnail=mediaThumbnail;
 mediaThumbnail=function(p){return isVideo(p)&&localVideoId(p.videoId)?localPoster(p.videoId)+'?size=thumb':photoThumbnail(p);};
 $('addVideo').onclick=()=>{const book=current();if(!book)return;if(!globalThis.AlbumMedia?.chooseVideos){showToast('视频导入在 Android APK 中使用；网页版仍可制作照片相册。');return;}busy(true,'请选择视频，每批最多 20 段；单段最多 250MB。');try{AlbumMedia.chooseVideos(book.id);}catch{onAlbumMediaError('无法打开视频选择器');}};

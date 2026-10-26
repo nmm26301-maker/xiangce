@@ -1,0 +1,45 @@
+/* Fullscreen photo controls stay outside the pan/zoom gesture surface. */
+.photo-viewer{height:100dvh;overflow:hidden;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));gap:4px;background:#09090a}
+.photo-viewer header,.photo-viewer footer,.photo-zoom-controls{flex-shrink:0}
+.photo-viewer header h2{overflow-wrap:anywhere;text-align:center;font-size:14px}
+.photo-viewport{position:relative;flex:1;min-height:60px;width:100%;overflow:hidden;touch-action:none;isolation:isolate}
+#photoViewport #fullPhoto{display:block;width:100%;height:100%;object-fit:contain;margin:0;max-width:none;flex:none;user-select:none;-webkit-user-drag:none}
+.photo-zoom-controls{display:flex;align-items:center;justify-content:center;gap:8px}
+.photo-zoom-controls button{min-width:48px;min-height:48px;padding:6px 10px;border:1px solid #555;border-radius:24px;background:#242426;color:#f3eee5;font-size:16px;touch-action:manipulation}
+.photo-zoom-controls button:last-child{font-size:13px}
+.photo-zoom-controls button:active{background:#45413a}
+.photo-zoom-controls button:disabled{opacity:.4}
+#photoZoomValue{font-size:12px;min-width:48px;text-align:center;font-variant-numeric:tabular-nums;color:#f3eee5}
+.photo-viewer .photo-zoom-hint{font-size:12px;color:#bdb5a6;text-align:center;margin:2px 0}
+.photo-viewer .photo-caption{margin:4px auto;max-height:64px;overflow:auto;flex-shrink:0;overflow-wrap:anywhere}
+.photo-viewer footer{gap:22px}
+.page-image[role=button]{cursor:zoom-in}
+.page-image[role=button]:focus-visible{outline:3px solid #99702d;outline-offset:-4px}
+.photo-viewer button:focus-visible{outline:3px solid #e4c691;outline-offset:2px}
+.viewer-license{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 var(--sans);max-height:30vh;overflow:auto}
+@media(max-height:500px){.photo-viewer{padding-top:4px;padding-bottom:4px;gap:0}.photo-viewer .photo-zoom-hint{display:none}.photo-viewer .photo-caption{max-height:30px;font-size:12px;margin:2px auto}.photo-viewer header button.icon,.photo-viewer footer button.icon{min-height:48px;height:48px}}
+
+/* Neighbouring months fan behind the active leaf. Only the engine owns the fold. */
+.year-book-frame{overflow:hidden;padding-top:12px;padding-bottom:22px}
+.year-book-mount{position:relative;z-index:2}
+.year-month-fan{position:absolute;inset:12px 0 22px;pointer-events:none;z-index:0;overflow:hidden}
+.month-preview{position:absolute;top:0;overflow:hidden;border-radius:12px 24px 24px 12px;box-shadow:0 4px 12px #0005;transform-origin:center;filter:brightness(.92)}
+.month-preview .calendar-paper{padding:20px 16px}
+.month-preview .calendar-heading{margin-bottom:12px}
+.month-preview .calendar-heading .month-name{font-size:30px}
+.calendar-paper{position:relative;background:#fffdfb}
+.calendar-paper:after{content:'';position:absolute;inset:0 auto 0 0;width:10%;background:linear-gradient(90deg,#64524019,transparent);pointer-events:none}
+.calendar-leaf{border-radius:10px 24px 24px 10px}
+.calendar-grid{gap:1px}
+.calendar-day{border-radius:0}
+.year-shelf{overflow:hidden;overflow:clip}
+.year-book-space{height:100%;position:relative}
+.year-book-space>#annualCover{z-index:2}
+.year-neighbours{position:absolute;inset:0;pointer-events:none}
+.year-neighbour.year-cover{position:absolute;width:165px;left:50%;margin-left:-82px;pointer-events:auto;opacity:.6;box-shadow:12px 18px 28px #0005;transform:rotateY(-20deg) rotateZ(-6deg) scale(.9);z-index:0}
+.year-neighbour.previous{top:-65px}.year-neighbour.following{bottom:-65px}
+.year-neighbour.year-cover strong{font-size:38px;top:12px;left:14px}
+.year-wheel{height:100%;padding:125px 0}
+.year-option{min-height:160px}
+@media(min-width:800px){.year-wheel{padding:150px 0}.year-option{min-height:200px}.year-neighbour.year-cover{width:210px;margin-left:-105px}.year-neighbour.previous{top:-90px}.year-neighbour.following{bottom:-90px}}
+@media(max-width:360px){.year-wheel{padding:110px 0}.year-option{min-height:140px}.year-neighbour.year-cover{width:140px;margin-left:-70px}.year-neighbour.previous{top:-52px}.year-neighbour.following{bottom:-52px}}

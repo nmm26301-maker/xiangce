@@ -78,3 +78,15 @@
 - 原生结果持久化为私有 JSON，经本地 WebView 资源读取；相册与处理令牌在同一 IndexedDB 快照提交。成功后确认保留，取消／失败只删除新生成的副本。未能读取数据库时不丢弃待办结果。
 - 自动删除原视频、后台上传、动态照片配对、云同步和加密备份均不在本次范围。清理无引用副本由明确按钮发起，并先验证当前相册保存成功。
 - 新增 AlbumArchiveTest 在 JVM 执行生产 ZIP 代码，custom-videos.cjs 验证 UI／数据库流程；安卓真实选择器、进程重建、私有视频播放和存储不足场景仍待设备验证。
+
+
+## v2.4 大图交互比较（2026-10-25）
+
+| 项目 | 维护／许可 | 实现、依赖与问题 | 决策 |
+|---|---|---|---|
+| [timmywil/panzoom](https://github.com/timmywil/panzoom) | GitHub pushed_at 2026-09-02；npm 固定 4.6.2；MIT | 零运行时依赖，Pointer Events、双指、焦点缩放、边界约束；[#512](https://github.com/timmywil/panzoom/issues/512) 与 [#606](https://github.com/timmywil/panzoom/issues/606) 讨论同时捏合与平移的定位；[#678](https://github.com/timmywil/panzoom/issues/678) 涉及尺寸变化 | 使用未修改的发布 min.js；pinchAndPan=false；切图销毁重建，旋转还原；边界约束下按钮缩放不使用 CSS 插值，防止快速还原读取中间尺寸 |
+| [dimsemenov/PhotoSwipe](https://github.com/dimsemenov/PhotoSwipe) | GitHub pushed_at 2025-12-04；MIT；上游正在开发 v6 | 完整灯箱、切图、焦点和手势系统；需提供图片尺寸并替换现有 UI；[#2179](https://github.com/dimsemenov/PhotoSwipe/issues/2179) 讨论宽高比例错误 | 当前已有照片／视频封面预览与原生播放桥，保留这套流程；只引入 Panzoom 负责缩放，不复制 PhotoSwipe 代码 |
+
+- npm tarball SHA-512 与注册表 integrity 核对一致；发行脚本、package.json、完整 MIT 许可在 third_party/panzoom；APK 与单文件网页内置许可，无 CDN 请求。
+- 日期与照片点击按 Pointer Events 的最大移动量区分轻点／拖动，多指取消轻点。主题书的可访问按钮语义不会屏蔽翻页拖动；视频播放按钮独立拦截 pointerdown。
+- 对照 [FlipYear 官方](https://flipyear.app/)的年度书架和月历宣传截图，调整相邻月份纸层、圆角及有效周数；只参考布局，未复制其商业素材／代码，不声明视觉完全一致。
