@@ -83,10 +83,18 @@ showPhoto=function(photos,index){
  photoViewerFocus=document.activeElement;
  previewPhoto(photos,index);$('reader').inert=true;
 };
+// System photos use a higher-resolution, bounded native decode only inside the full-screen viewer.
+function fullResolutionPhotoSource(photo){
+ const src=photo?.src;
+ if(isVideo(photo)||typeof src!=='string')return src;
+ return /^https:\/\/flipyear\.local\/media\/[0-9]+\?v=[0-9]+$/.test(src)?src+'&size=full':src;
+}
 const updatePhoto=updatePhotoViewer;
 updatePhotoViewer=function(){
  destroyPhotoZoom();lastPhotoTap=null;photoPointers.clear();
  updatePhoto();
+ const detailedSource=fullResolutionPhotoSource(photoSet[photoAt]);
+ if(fullPhoto.getAttribute('src')!==detailedSource)fullPhoto.src=detailedSource;
  fullPhoto.setAttribute('aria-label',isVideo(photoSet[photoAt])?'视频封面，可双击缩放':'照片，可双击缩放');
  // A cached image may already be complete when switching between duplicate photos.
  if(fullPhoto.complete&&fullPhoto.naturalWidth)photoZoomFrame=requestAnimationFrame(initPhotoZoom);
