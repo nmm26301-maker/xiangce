@@ -7,10 +7,18 @@ const fs=require('node:fs');const path=require('node:path');
  await p.goto('file://'+root+'/FlipYear.html');await p.waitForSelector('.year-option');assert.equal(await p.locator('.year-option').count(),3);
  const slots=await p.evaluate(()=>({leap:calendarSlots(2024,1).filter(Boolean),nonleap:calendarSlots(2025,1).filter(Boolean),june:calendarSlots(2026,5),valid:validPhotoDate('2024-02-29'),invalid:validPhotoDate('2025-02-29')}));assert.equal(slots.leap.length,29);assert.equal(slots.nonleap.length,28);assert.equal(slots.june[0],1);assert.equal(slots.valid,true);assert.equal(slots.invalid,false);
  await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());assert.equal(await p.evaluate(()=>yearEngine.getPageCount()),14);
+ const indexed=await p.evaluate(()=>{
+  const photos=Array.from({length:10000},(_,i)=>({id:String(i),date:'2024-06-12',kind:i%7===0?'video':'photo'}));
+  const result=indexYearPhotos(photos);
+  return {days:result.byDate.size,photos:result.byDate.get('2024-06-12').length,total:result.monthTotals[5],current:yearPhotosByDate.get('2026-06-12')?.length||0};
+ });
+ assert.deepEqual(indexed,{days:1,photos:10000,total:10000,current:1});
  assert.equal(await p.locator('#yearAutoTurn').innerText(),'自动翻页');
  await p.locator('#yearAutoTurn').click();
  await p.waitForFunction(()=>yearEngine?.getCurrentPageIndex()>0);
  await p.locator('#yearAutoTurn').click();
+ assert.equal(await p.locator('#yearAutoTurn').getAttribute('aria-pressed'),'false');
+ await p.locator('#yearAutoTurn').click();await p.keyboard.press('ArrowRight');
  assert.equal(await p.locator('#yearAutoTurn').getAttribute('aria-pressed'),'false');
  await p.locator('#yearCoverBack').click();
  await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===0);

@@ -17,3 +17,10 @@ body.night{--paper:#fffaf0}body .primary{color:#171717}body.light .primary{color
 .photo-viewer .play-video{align-self:center;flex-shrink:0;min-height:48px;margin:0 0 4px;background:#e4c691;color:#211e18}
 .photo-viewer:has(.play-video:not([hidden])) img{height:calc(100dvh - 250px)}
 .custom-video-toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin:12px 12px 18px}.custom-video-toolbar span{font-size:11px;color:var(--muted);max-width:230px}.video-page-play{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);min-height:48px;max-width:90%;z-index:3;background:#e4c691;color:#211e18;font-size:12px}.video-page .page-image{background:#252324}
+
+/* Subtle bookbinding details without replacing the upstream curl geometry. */
+.calendar-paper{background-image:linear-gradient(90deg,rgba(88,60,27,.12),transparent 7%,transparent 94%,rgba(151,111,58,.09)),repeating-linear-gradient(0deg,rgba(94,77,51,.025) 0 1px,transparent 1px 5px)}
+.calendar-cover-inner{box-shadow:inset 13px 0 18px rgba(30,20,8,.3),inset -2px 0 5px rgba(255,255,255,.13)}
+.year-reader-footer #yearAutoTurn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.cover-picks #moreYearCovers{grid-column:1/-1;min-height:48px}
+@media(max-width:650px){.year-reader-footer #yearAutoTurn{min-width:110px}}

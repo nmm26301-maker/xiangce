@@ -128,7 +128,7 @@ bindPhotoTap($('reader'),'.page-image[data-photo-index]',target=>{
 });
 bindPhotoTap($('yearBookFrame'),'[data-action="day"]',target=>{
  if(!yearEngine)return;
- yearEngine.cancelTurn();showPhoto(yearPhotos.filter(p=>p.date===target.dataset.date),0);
+ yearEngine.cancelTurn();showPhoto(yearPhotosByDate.get(target.dataset.date)||[],0);
 });
 const timelinePhotos=renderTimeline;
 renderTimeline=function(){
