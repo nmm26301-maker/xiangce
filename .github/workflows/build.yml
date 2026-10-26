@@ -1,0 +1,49 @@
+name: Build and test FlipYear
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK components
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Generate web edition
+        run: python3 scripts/build-web.py
+      - name: JavaScript syntax
+        run: |
+          node --check app/src/main/assets/yearbook.js
+          node --check app/src/main/assets/photo-viewer.js
+          node --check tests/yearbook.cjs
+      - name: Java policy regression tests
+        run: bash tests/native-policy.sh
+      - name: Browser regression tests
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node tests/functional.cjs
+          node tests/yearbook.cjs
+          node tests/photo-viewer.cjs
+          node tests/widgets.cjs
+          node tests/videos.cjs
+          node tests/custom-videos.cjs
+      - name: Build signed development APK
+        run: bash build-android.sh
+      - name: Upload verified development APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipYear-v2.5.0-debug-apk
+          path: FlipYear-v2.5.0.apk
+          if-no-files-found: error
+          retention-days: 7
