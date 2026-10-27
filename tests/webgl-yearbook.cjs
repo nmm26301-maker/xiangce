@@ -4,7 +4,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
  try{
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true}),p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
   await p.goto('file://'+path.join(root,'FlipYear.html'));await p.waitForSelector('.year-option');await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());
-  await p.locator('#yearRenderMode').click();await p.waitForFunction(()=>yearEngine?.isWebGL&&yearEngine.isReady());
+  await p.waitForFunction(()=>yearEngine?.isWebGL&&yearEngine.isReady());assert.equal(await p.locator('#yearRenderMode').getAttribute('aria-pressed'),'true');
   assert.equal(await p.evaluate(()=>yearEngine.getPageCount()),14);assert.equal(await p.evaluate(()=>yearEngine.book.flipGeom.attributes.position.count),82);
   await p.locator('#yearMonths [data-month="5"]').click();await p.waitForFunction(()=>yearEngine.isReady()&&yearEngine.index===6);
   assert.equal(await p.evaluate(()=>yearEngine.displayed[0].getContext('2d').getImageData(300,380,1,1).data[3]),255,'Page content is opaque after rounded-corner masking');

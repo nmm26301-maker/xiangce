@@ -1,6 +1,6 @@
 /* Viewer integration. Pan/zoom geometry is provided by unmodified MIT Panzoom. */
 'use strict';
-let photoZoom=null,photoViewerFocus=null,photoZoomFrame=0;
+let photoZoomLimit=4,photoZoom=null,photoViewerFocus=null,photoZoomFrame=0;
 const photoViewport=$('photoViewport'),fullPhoto=$('fullPhoto');
 function destroyPhotoZoom(){
  cancelAnimationFrame(photoZoomFrame);
@@ -16,14 +16,14 @@ function syncPhotoZoom(){
  if(!photoZoom)return;
  const scale=photoZoom.getScale();
  $('photoZoomValue').textContent=Math.round(scale*100)+'%';
- $('photoZoomIn').disabled=scale>=4-.01;
+ $('photoZoomIn').disabled=scale>=photoZoomLimit-.01;
  $('photoZoomOut').disabled=scale<=1+.01;
  $('photoZoomReset').disabled=scale<=1+.01;
 }
 function initPhotoZoom(){
  if($('photoViewer').hidden||!fullPhoto.naturalWidth)return;
  destroyPhotoZoom();
- photoZoom=Panzoom(fullPhoto,{minScale:1,maxScale:4,contain:'outside',panOnlyWhenZoomed:true,pinchAndPan:false,canvas:true,duration:reduced()?0:180});
+ photoZoom=Panzoom(fullPhoto,{minScale:1,maxScale:photoZoomLimit,contain:'outside',panOnlyWhenZoomed:true,pinchAndPan:false,canvas:true,duration:reduced()?0:180});
  photoZoomFrame=requestAnimationFrame(syncPhotoZoom);
 }
 fullPhoto.addEventListener('load',initPhotoZoom);

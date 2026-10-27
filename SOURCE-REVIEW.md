@@ -106,3 +106,7 @@
 - 原图复制采用有界流式 I/O + fsync，记录大小与 SHA-256；预览有界解码另存缓存。版本 3 ZIP 包含原文件、关联视频与清单，继承路径白名单、CRC、解压总量限制与回滚；恢复原图再核对长度和哈希。无第三方归档代码。
 - 原 turngl / Three.js 源码说明和完整 MIT 许可证位于 third_party/webgl；合并 bundle 与 APK 设置中保留声明。scripts/build-webgl.cjs 可重建离线 bundle。MPL 引擎及源码出口保持原协议。
 - WebGL 在 Chromium 软件 GPU 验证真实顶点深度、射线选取、拖动和上下文恢复；不是手机 GPU 帧率报告。实际品牌／型号、系统照片提供者、HEVC / MOV 解码、权限和升级尚需真实设备。
+
+## v2.7 大图方案
+
+对照 [ZoomImage](https://github.com/panpf/zoomimage) 与 [Subsampling Scale Image View](https://github.com/davemorrissey/subsampling-scale-image-view)（两者 Apache-2.0）的超大图分块思路，沿用 Panzoom 手势，使用 Android 官方 BitmapRegionDecoder 解码可见区域。没有引入其 UI 库或复制其 View 代码，未新增 APK 运行时依赖。

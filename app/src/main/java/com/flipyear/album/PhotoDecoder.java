@@ -14,7 +14,7 @@ final class PhotoDecoder {
     private PhotoDecoder() { }
 
     static Bitmap decode(ContentResolver resolver, Uri source, int edge) throws IOException {
-        if (!"content".equals(source.getScheme())) throw new IOException("Unsupported photo URI");
+        if (source == null || (!"content".equals(source.getScheme()) && !"file".equals(source.getScheme()))) throw new IOException("Unsupported photo URI");
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
         try (InputStream stream = resolver.openInputStream(source)) { BitmapFactory.decodeStream(stream, null, options); }

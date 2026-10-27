@@ -6,7 +6,7 @@ const path=require('node:path');
  const browser=await chromium.launch({executablePath:process.env.CHROME_BIN,args:['--no-sandbox']});
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true});
  const p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
- await p.goto('file://'+path.join(root,'FlipYear.html'));await p.waitForSelector('.year-option');
+ await p.goto('file://'+path.join(root,'FlipYear.html'));await p.waitForSelector('.year-option');await p.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});
  const neighbour=await p.locator('.year-neighbour').getAttribute('data-neighbour-year');await p.locator('.year-neighbour').click();assert.equal(await p.evaluate(()=>selectedYear),Number(neighbour));assert.equal(await p.evaluate(()=>document.querySelector('.year-shelf').scrollTop),0);await p.locator('[data-year="2026"]').click();
  await p.locator('[data-tab="albums"]').click();await p.locator('#continueBook').click();
  await p.waitForFunction(()=>customEngine?.isReady());

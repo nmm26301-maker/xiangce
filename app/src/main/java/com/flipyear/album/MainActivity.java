@@ -75,6 +75,7 @@ public final class MainActivity extends Activity {
                 if ("file:///android_asset/migrate.html".equals(url.toString())) return null;
                 if ("https".equals(url.getScheme()) && "flipyear.local".equals(url.getHost())) {
                     String path = url.getPath();
+                    if (path != null && path.startsWith("/photo-detail/")) return PhotoRegions.resource(MainActivity.this, url);
                     if (path != null && path.startsWith("/media/")) return mediaLibrary.image(url);
                     if (path != null && path.startsWith("/widget-photo/")) return widgetPhoto(url);
                     if (path != null && (path.startsWith("/custom-media/") || path.startsWith("/album-result/"))) return customMedia.resource(url);

@@ -9,7 +9,7 @@ const path=require('node:path');
  try {
   const web=await browser.newPage({viewport:{width:320,height:740}});
   const errors=[];web.on('pageerror',error=>errors.push(error.message));
-  await web.goto('file://'+root+'/FlipYear.html');await web.waitForSelector('.year-option');
+  await web.goto('file://'+root+'/FlipYear.html');await web.waitForSelector('.year-option');await web.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});
   await web.locator('[data-tab="settings"]').click();await web.locator('#addMemoryWidget').click();
   assert.match(await web.locator('#toast').innerText(),/Android APK/);
   assert.equal(await web.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

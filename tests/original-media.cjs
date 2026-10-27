@@ -14,11 +14,11 @@ const poster=id=>'https://flipyear.local/custom-media/'+id+'/poster';
    window.PhotoMedia={inspectPhoto:(id,token)=>requests.inspect.push({id,token}),playMotion:id=>requests.motion.push(id),exportOriginal:(id,name,hash,bytes)=>requests.exports.push({id,name,hash,bytes}),deviceReport:()=>JSON.stringify({manufacturer:'mock-device',physicalDeviceTest:'not executed'})};
   });
   await context.route('https://flipyear.local/**',async route=>{
-   const url=new URL(route.request().url());if(url.pathname.startsWith('/custom-media/'))return route.fulfill({body:image,contentType:'image/jpeg'});
+   const url=new URL(route.request().url());if(url.pathname.startsWith('/photo-detail/'))return route.fulfill({status:404,body:''});if(url.pathname.startsWith('/custom-media/'))return route.fulfill({body:image,contentType:'image/jpeg'});
    if(url.pathname.startsWith('/album-result/'))return route.fulfill({body:JSON.stringify(await route.request().frame().evaluate(()=>nativeResult)),contentType:'application/json'});
    const file=path.join(root,'app/src/main/assets',url.pathname);await route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'});
   });
-  const p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('https://flipyear.local/index.html');await p.waitForSelector('.year-option');
+  const p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('https://flipyear.local/index.html');await p.waitForSelector('.year-option');await p.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});
   await p.locator('[data-tab="albums"]').click();await p.locator('#newBook').click();await p.locator('#bookName').fill('原图与实况');await p.locator('#bookForm .primary').click();
   const book=await p.evaluate(()=>current().id);await p.locator('#addPhoto').click();assert.deepEqual(await p.evaluate(()=>requests.photos),[book]);
   const page={kind:'photo',originalId:P,src:poster(P),originalBytes:12345678,originalSha256:'a'.repeat(64),originalMime:'image/jpeg',width:6000,height:4000,filename:'IMG_20240901.jpg',date:'',caption:'',layout:'classic'};
@@ -47,7 +47,7 @@ const poster=id=>'https://flipyear.local/custom-media/'+id+'/poster';
   assert.equal(await p.evaluate(value=>{try{validateAlbumArchive(value);return false;}catch{return true;}},bad),true);
   assert.equal(await p.evaluate(value=>{value.version=1;try{validateBackup(value);return false;}catch{return true;}},restore),true,'Reference-only JSON never pretends to contain originals');
   await p.locator('[data-tab="settings"]').click();await p.locator('#deviceReport').click();assert.equal(await p.evaluate(()=>requests.reports.at(-1).results.physicalDeviceVerified),false);
-  await p.reload();await p.waitForSelector('.year-option');assert.equal(await p.evaluate(id=>state.books.find(b=>b.id===id).pages[0].originalId,book),P);
+  await p.reload();await p.waitForSelector('.year-option');await p.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});assert.equal(await p.evaluate(id=>state.books.find(b=>b.id===id).pages[0].originalId,book),P);
   assert.deepEqual(errors,[]);await context.close();console.log('PASS original import metadata, full preview, stale motion callback rejection, embedded/paired playback transport, raw export, SHA references, v3 ZIP, pair rollback, cleanup retention, restore and honest device report. Native transport mocked.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
