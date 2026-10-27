@@ -15,7 +15,7 @@ const fs=require('node:fs'),path=require('node:path');
    await route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'});
   });
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('https://flipyear.local/index.html');await page.waitForSelector('.year-option');await page.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});
+  await page.goto('https://flipyear.local/index.html');await page.waitForFunction(()=>typeof window.onNativeVideoError==='function');await page.waitForSelector('.year-option');await page.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});
   const now=new Date(),today=`${now.getFullYear()-1}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const records=[{id:'device-7',kind:'photo',src:'https://flipyear.local/media/7?v=1',date:'2024-06-12',dateSource:'taken'},
    {id:'device-video-7',kind:'video',src:'https://flipyear.local/media/video/7?v=1',date:'2024-06-12',durationMs:61000,dateSource:'taken',filename:'六月.mp4'},
