@@ -1,6 +1,6 @@
 /* Original files stay in native private storage; the WebView only receives previews. */
 'use strict';
-$('photoZoomReset').closest('.photo-zoom-controls').insertAdjacentHTML('afterend','<div class="original-actions" id="originalActions"><button class="secondary" id="saveOriginal" hidden>保存原文件</button><button class="secondary" id="playMotion" hidden>播放实况</button><button class="secondary" id="pairMotion" hidden>关联实况视频</button><button class="secondary" id="unlinkMotion" hidden>解除关联</button></div><p class="original-status" id="originalStatus" aria-live="polite"></p>');
+$('photoZoomReset').closest('.photo-zoom-controls').insertAdjacentHTML('afterend','<div class="original-actions" id="originalActions"><button class="secondary" id="saveOriginal" hidden>保存原文件</button><button class="secondary" id="enhanceOriginal" hidden>AI 高清增强</button><button class="secondary" id="playMotion" hidden>播放实况</button><button class="secondary" id="pairMotion" hidden>关联实况视频</button><button class="secondary" id="unlinkMotion" hidden>解除关联</button></div><p class="original-status" id="originalStatus" aria-live="polite"></p>');
 let motionToken='',motionFound=false;
 function originalReference(p){return hasOriginal(p)?p.originalId:/^device-[1-9][0-9]{0,18}$/.test(p?.id||'')&&!isVideo(p)?p.id:null;}
 function originalBook(p){
@@ -17,6 +17,7 @@ updatePhotoViewer=function(){
  originalViewerUpdate();motionToken=uid();motionFound=false;
  const p=photoSet[photoAt],reference=originalReference(p),book=originalBook(p);
  $('saveOriginal').hidden=!reference||!globalThis.PhotoMedia?.exportOriginal;
+ $('enhanceOriginal').hidden=isVideo(p)||!reference||!globalThis.PhotoMedia?.shareForEnhancement;
  $('pairMotion').hidden=isVideo(p)||!book||!globalThis.AlbumMedia?.pairVideo;
  $('unlinkMotion').hidden=!p?.liveVideoId||!book;
  $('playMotion').hidden=!localVideoId(p?.liveVideoId);
@@ -36,6 +37,12 @@ $('saveOriginal').onclick=()=>{
  const p=photoSet[photoAt],id=originalReference(p);if(!id||!globalThis.PhotoMedia?.exportOriginal)return;
  busy(true,'请选择原文件保存位置，不缩放、不重新编码。');
  try{PhotoMedia.exportOriginal(id,p.filename||'FlipYear-original',p.originalSha256||'',p.originalBytes||0);}catch{onOriginalMessage('原文件未保存：选择器不可用');}
+};
+$('enhanceOriginal').onclick=()=>{
+ const p=photoSet[photoAt],id=originalReference(p);
+ if(!id||isVideo(p)||!globalThis.PhotoMedia?.shareForEnhancement)return;
+ busy(true,'正在准备完整原图，通过安卓分享菜单交给本地 AI 图片增强应用…');
+ try{PhotoMedia.shareForEnhancement(id);}catch{onOriginalMessage('无法启动 AI 增强分享：请检查照片授权');}
 };
 $('playMotion').onclick=()=>{
  const p=photoSet[photoAt];
