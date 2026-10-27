@@ -1,0 +1,39 @@
+name: Build FlipYear AI Share APK
+
+on:
+  push:
+    branches: [feature/mi10pro-ai-upscale-share]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install SDK 35
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Check UI and sharing restrictions
+        run: |
+          node --check app/src/main/assets/original-media.js
+          bash tests/ai-share-policy.sh
+          bash tests/native-policy.sh
+      - name: Build Android APK
+        run: bash build-android.sh
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipYear-v2.6.2-Mi10Pro
+          path: FlipYear-v2.6.2.apk
+          if-no-files-found: error
