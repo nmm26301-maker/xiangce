@@ -1,3 +1,13 @@
+# 2.8.1 显示修正与 AI 移除 · 2026-10-28
+
+本版将自建书照片区域扩大至细边框内部，按原比例居中裁切；文字改为底部叠层，3D canvas 和兼容 HTML 阅读器保持一致，完整原图查看逻辑未变。
+
+删除 2.8.0 的 EnhanceActivity、AiFiles、AiPolicy、AiProcess、原图分享 Provider、两个 AI JavaScript 桥接方法、增强按钮、AI 构建下载脚本、模型来源清单和许可资源。构建与 CI 不再拉取或打包增强资源。安装包不含 ncnn、RealSR、AI 模型或 AI Activity。历史 release APK 仅作为旧版存档保留。
+
+升级清理仅限应用 files 内的三个旧功能目录；递归操作校验 canonical path，拒绝越过私有根目录，不改相册文件和外部保存图。
+
+以下记录是已移除功能及更早版本的历史审查，不代表当前版本仍包含 AI：
+
 # 2.8.0 内置 AI 来源与实现审查 · 2026-10-28
 
 - 固定上游 `tumuyan/RealSR-NCNN-Android` 1.13.2（提交 `0eb16763761e46f55c6223439ca1ad20216bc4ab`），APK SHA-256 `d7b68c2589ad1cb9a953ed8ca001f6600217dceb4ee7053bc21e8c3899c4c6e7`。构建脚本校验源 APK 和 4 个提取资源；不打包外部应用界面。

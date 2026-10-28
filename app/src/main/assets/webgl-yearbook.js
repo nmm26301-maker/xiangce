@@ -64,11 +64,13 @@ class WebGLYearEngine {
  }
  async paintPhoto(index){
   const p=this.photos[index],canvas=document.createElement('canvas');canvas.width=600;canvas.height=800;canvas.dayHits=[];const c=canvas.getContext('2d');c.fillStyle='#fffaf0';c.fillRect(0,0,600,800);
-  const image=await this.image(p.src),full=p.layout==='full',box=full?{x:0,y:0,w:600,h:800}:{x:32,y:40,w:536,h:p.layout==='polaroid'?570:600};
+  const image=await this.image(p.src),full=p.layout==='full',border=full?0:24,box={x:border,y:border,w:600-border*2,h:800-border*2};
   if(image)this.drawImage(c,image,box.x,box.y,box.w,box.h);else{c.fillStyle='#e7dfd2';c.fillRect(box.x,box.y,box.w,box.h);c.fillStyle='#635748';c.font='22px sans-serif';c.fillText('照片暂不可用',60,300);}
-  if(full){c.fillStyle='#0008';c.fillRect(0,650,600,150);}c.fillStyle=full?'#fff':'#514737';c.font='24px sans-serif';
-  const caption=Array.from(p.caption||'');let line='',row=0;for(const letter of caption){if(c.measureText(line+letter).width>520){c.fillText(line,40,full?700+row*32:690+row*32);line='';if(++row>=2)break;}line+=letter;}if(row<2)c.fillText(line,40,(full?700:690)+row*32);
-  c.font='18px sans-serif';c.fillText(p.date||'',40,770);c.textAlign='right';c.fillText(String(index+1).padStart(2,'0'),560,770);
+  // Metadata sits over the photograph; no empty caption area shrinks the image.
+  const shade=c.createLinearGradient(0,600,0,800-border);shade.addColorStop(0,'#0000');shade.addColorStop(1,'#0009');c.fillStyle=shade;c.fillRect(box.x,600,box.w,box.h+box.y-600);
+  c.fillStyle='#fff';c.font='24px sans-serif';
+  const caption=Array.from(p.caption||'');let line='',row=0;for(const letter of caption){if(c.measureText(line+letter).width>496){c.fillText(line,40,682+row*32);line='';if(++row>=2)break;}line+=letter;}if(row<2)c.fillText(line,40,682+row*32);
+  c.font='18px sans-serif';c.fillText(p.date||'',40,752);c.textAlign='right';c.fillText(String(index+1).padStart(2,'0'),560,752);
   if(isVideo(p)){c.textAlign='center';c.font='56px sans-serif';c.fillText('▶',300,400);}return this.rounded(canvas);
  }
  render(single=this.visible().length===1){

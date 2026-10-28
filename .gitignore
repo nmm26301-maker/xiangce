@@ -11,7 +11,3 @@ tests/roundtrip.json
 
 third_party/webgl/node_modules/
 device-reports/
-
-app/src/main/jniLibs/
-app/src/main/assets/ai-engine/x4.bin
-app/src/main/assets/ai-engine/x4.param

@@ -88,57 +88,6 @@ public final class OriginalMedia {
             }
         }
     }
-    @JavascriptInterface public void enhanceOriginal(String id) {
-        worker.execute(() -> {
-            try {
-                Uri uri = photoUri(activity, id);
-                try (InputStream in = activity.getContentResolver().openInputStream(uri)) {
-                    if (in == null) throw new IOException("原图不可读");
-                }
-                activity.runOnUiThread(() -> {
-                    try { activity.startActivity(new Intent(activity, EnhanceActivity.class).putExtra(EnhanceActivity.PHOTO_ID, id)); message("已打开本机 AI 高清增强，原图保持不变"); }
-                    catch (Exception error) { message("内置增强页面无法打开：" + error.getMessage()); }
-                });
-            } catch (Exception error) { message("原图不可用于增强：" + error.getMessage()); }
-        });
-    }
-
-    /** 通过安卓分享器将原始字节 URI 授权给用户选择的本地 AI 增强应用。 */
-    @JavascriptInterface public void shareForEnhancement(String id) {
-        worker.execute(() -> {
-            try {
-                Uri source = photoUri(activity, id);
-                if (AlbumArchive.photoId(id)) {
-                    File original = CustomMedia.file(activity, id);
-                    if (!original.isFile() || original.length() <= 0) throw new IOException("原图副本已不存在");
-                    source = OriginalShareProvider.uri(id);
-                } else {
-                    try (ParcelFileDescriptor reader =
-                             activity.getContentResolver().openFileDescriptor(source, "r")) {
-                        if (reader == null) throw new IOException("无法读取系统原图");
-                    }
-                }
-                final Uri shareUri = source;
-                String resolved = activity.getContentResolver().getType(shareUri);
-                final String mime = resolved != null && resolved.startsWith("image/")
-                    ? resolved : "image/*";
-                activity.runOnUiThread(() -> {
-                    try {
-                        Intent send = new Intent(Intent.ACTION_SEND);
-                        send.setType(mime);
-                        send.putExtra(Intent.EXTRA_STREAM, shareUri);
-                        send.setClipData(ClipData.newUri(activity.getContentResolver(), "FlipYear 原图", shareUri));
-                        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        Intent chooser = Intent.createChooser(send, "选择本地 AI 图片增强 App");
-                        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        activity.startActivity(chooser);
-                        message("请在分享菜单中选择 RealSR-NCNN-Android；增强后的照片由该应用另存");
-                    } catch (Exception error) { message("无法打开图片分享菜单：" + error.getMessage()); }
-                });
-            } catch (Exception error) { message("原图无法用于 AI 增强：" + error.getMessage()); }
-        });
-    }
-
     @JavascriptInterface public void exportOriginal(String id, String name, String checksum, long size) {
         if (!exporting.compareAndSet(false, true)) return;
         worker.execute(() -> {

@@ -28,8 +28,6 @@ jobs:
           test -x "$manager"
           yes | "$manager" --licenses >/dev/null || true
           "$manager" "platforms;android-35" "build-tools;35.0.0"
-      - name: Prepare bundled offline AI
-        run: python3 scripts/prepare-ai.py
       - name: Generate web edition
         run: python3 scripts/build-web.py
       - name: JavaScript syntax
@@ -43,7 +41,6 @@ jobs:
       - name: Java policy regression tests
         run: |
           bash tests/native-policy.sh
-          bash tests/ai-share-policy.sh
       - name: Browser regression tests
         run: |
           npm install --no-save playwright@1.56.1 sharp@0.34.5
@@ -57,6 +54,7 @@ jobs:
           node tests/original-media.cjs
           node tests/webgl-yearbook.cjs
           node tests/photo-detail.cjs
+          node tests/photo-frame.cjs
       - name: Resolve APK version
         run: |
           version=$(python3 -c "import xml.etree.ElementTree as e; print(e.parse('app/src/main/AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName'])")

@@ -14,3 +14,5 @@
 UI UX Pro Max 已执行 photography gallery、swipe gesture alternative 等检索。photo calendar dark immersive 无匹配，改用 photography gallery 的内容优先/克制界面建议；具体月历和转盘结构依据官方产品截图确定，不假称数据库提供了对应模板。
 
 已检查 320/375/390/768/844/1440px 与横屏、明暗主题、正反卷页及减少动效。
+
+2.8.1：自建相册照片铺满细边框内部，等比例居中裁切，不拉伸。文字与日期叠在底部，不再预留大块空纸。3D 与兼容阅读器一致；大图查看保持完整原图。UI/UX 检索 photo frame crop aspect ratio 无匹配，改用 image dimension 的响应式建议并以截图与圆形测试图验证裁切和比例。

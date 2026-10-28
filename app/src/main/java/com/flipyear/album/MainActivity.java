@@ -18,6 +18,15 @@ import java.nio.charset.StandardCharsets;
 
 /** FlipYear 离线相册容器；照片通过系统选择器读取，备份通过系统文档选择器写入。 */
 public final class MainActivity extends Activity {
+    private void removeRetiredData(java.io.File file) {
+        try {
+            String root = getFilesDir().getCanonicalPath() + java.io.File.separator;
+            if (!file.getCanonicalPath().startsWith(root)) return;
+            java.io.File[] children = file.listFiles();
+            if (children != null) for (java.io.File child : children) removeRetiredData(child);
+            file.delete();
+        } catch (java.io.IOException ignored) { }
+    }
     private static final int PICK_PHOTOS = 101;
     private static final int SAVE_BACKUP = 102;
     private WebView web;
@@ -36,6 +45,10 @@ public final class MainActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        new Thread(() -> {
+            for (String name : new String[]{"models-Real-ESRGANv3-general-v1", "ai-model-general-v1", "ai-work"})
+                removeRetiredData(new java.io.File(getFilesDir(), name));
+        }, "retired-feature-cleanup").start();
         pendingWidgetId = savedInstanceState == null ? getIntent().getIntExtra(MemoryWidget.OPEN_ID, 0) : savedInstanceState.getInt("pendingWidgetId", 0);
         getWindow().setStatusBarColor(0xff101011);
         getWindow().setNavigationBarColor(0xff101011);

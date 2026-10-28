@@ -2,16 +2,9 @@ plugins { id 'com.android.application' }
 android {
     namespace 'com.flipyear.album'
     compileSdk 35
-    defaultConfig { applicationId 'com.flipyear.album'; minSdk 26; targetSdk 34; versionCode 13; versionName '2.8.0' }
-    packaging { jniLibs { useLegacyPackaging = true; keepDebugSymbols += ['**/libflipyear_realsr.so', '**/libncnn.so'] } }
+    defaultConfig { applicationId 'com.flipyear.album'; minSdk 26; targetSdk 34; versionCode 14; versionName '2.8.1' }
     signingConfigs {
         debug { storeFile rootProject.file('signing/flipyear-debug.jks'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }
-
-tasks.register('prepareEmbeddedAi', Exec) {
-    workingDir rootProject.projectDir
-    commandLine 'python3', 'scripts/prepare-ai.py'
-}
-tasks.named('preBuild').configure { dependsOn 'prepareEmbeddedAi' }

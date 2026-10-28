@@ -24,3 +24,14 @@ body.night{--paper:#fffaf0}body .primary{color:#171717}body.light .primary{color
 .year-reader-footer #yearAutoTurn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .cover-picks #moreYearCovers{grid-column:1/-1;min-height:48px}
 @media(max-width:650px){.year-reader-footer #yearAutoTurn{min-width:110px}}
+
+/* Photographs fill the frame in the compatible reader, matching 3D textures. */
+.paper-page:not(.back){padding:0;display:block}
+.paper-page:not(.back) .page-image{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);max-width:none;object-fit:cover;object-position:center;border:0;transform:none;margin:0;box-shadow:none}
+.paper-page.full .page-image{inset:0;width:100%;height:100%}
+.paper-page.full:after{display:none}
+.paper-page .page-meta{position:absolute;z-index:1;inset:auto 12px 12px;color:white;padding:36px 10px 10px;background:linear-gradient(transparent,#0009);pointer-events:none}
+.paper-page.full .page-meta{inset:auto 0 0;padding:36px 20px 14px}
+.paper-page .page-meta .page-caption{font:400 16px/1.4 var(--serif);margin:0 0 8px;color:white;-webkit-line-clamp:2}
+.paper-page .page-footer{display:flex;align-items:end;justify-content:space-between;gap:12px}
+.paper-page .page-meta .page-date,.paper-page .page-meta .page-no{position:static;color:white;font-size:10px;line-height:1.4;margin:0;padding:0;text-shadow:0 1px 3px #0008}

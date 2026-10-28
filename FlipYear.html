@@ -33,6 +33,17 @@ body.night{--paper:#fffaf0}body .primary{color:#171717}body.light .primary{color
 .year-reader-footer #yearAutoTurn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .cover-picks #moreYearCovers{grid-column:1/-1;min-height:48px}
 @media(max-width:650px){.year-reader-footer #yearAutoTurn{min-width:110px}}
+
+/* Photographs fill the frame in the compatible reader, matching 3D textures. */
+.paper-page:not(.back){padding:0;display:block}
+.paper-page:not(.back) .page-image{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);max-width:none;object-fit:cover;object-position:center;border:0;transform:none;margin:0;box-shadow:none}
+.paper-page.full .page-image{inset:0;width:100%;height:100%}
+.paper-page.full:after{display:none}
+.paper-page .page-meta{position:absolute;z-index:1;inset:auto 12px 12px;color:white;padding:36px 10px 10px;background:linear-gradient(transparent,#0009);pointer-events:none}
+.paper-page.full .page-meta{inset:auto 0 0;padding:36px 20px 14px}
+.paper-page .page-meta .page-caption{font:400 16px/1.4 var(--serif);margin:0 0 8px;color:white;-webkit-line-clamp:2}
+.paper-page .page-footer{display:flex;align-items:end;justify-content:space-between;gap:12px}
+.paper-page .page-meta .page-date,.paper-page .page-meta .page-no{position:static;color:white;font-size:10px;line-height:1.4;margin:0;padding:0;text-shadow:0 1px 3px #0008}
 </style>
 <style>/* Fullscreen photo controls stay outside the pan/zoom gesture surface. */
 .photo-viewer{height:100dvh;overflow:hidden;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));gap:4px;background:#09090a}
@@ -133,7 +144,7 @@ const featured=state.books.find(b=>b.id===state.lastBook)||state.books[0];docume
 function renderTimeline(){const groups=new Map();for(const b of state.books)for(let i=0;i<b.pages.length;i++){const p=b.pages[i],key=p.date||'未标注';if(!groups.has(key))groups.set(key,[]);groups.get(key).push({b,p,i});}$('timeline').replaceChildren();for(const [date,items]of [...groups].sort(([a],[b])=>b.localeCompare(a))){const row=el('div','memory-row'),d=el('div','memory-date',date==='未标注'?'—':date.slice(8));d.append(el('small',null,date==='未标注'?'待记录':date.slice(0,7).replace('-',' / ')));const photos=el('div','memory-photos');for(const {b,p,i}of items){const btn=el('button');btn.setAttribute('aria-label',`查看${p.caption||b.title}`);const img=el('img');img.src=p.src;img.alt=p.caption||'相册照片';img.loading='lazy';btn.append(img,el('small',null,p.caption||b.title));btn.onclick=()=>openBook(b.id,i);photos.append(btn);}row.append(d,photos);$('timeline').append(row);}if(!groups.size)$('timeline').append(el('div','empty','还没有照片，去相册里添加一些瞬间吧。'));}
 function openBook(id,index){activeId=id;const b=current();if(!b)return;pageIndex=Math.max(0,Math.min(index??state.positions[id]??0,b.pages.length-1));state.lastBook=id;$('reader').hidden=false;lock();renderReader();save();$('closeReader').focus();}
 function closeReader(){cancelFlip();$('reader').hidden=true;activeId=null;lock();renderShelf();if(tab==='memories')renderTimeline();$('newBook').focus();}
-function pageNode(p,index){const node=el('div','paper-page '+p.layout);const top=el('div','page-top');top.append(el('span',null,current().title),el('span',null,'FLIPYEAR'));const im=el('img','page-image');im.loading='lazy';im.decoding='async';im.src=p.src;im.alt=p.caption||`第${index+1}张照片`;im.draggable=false;node.append(top,im,el('p','page-caption',p.caption||'把这一刻，留在心里。'),el('p','page-date',dateText(p.date)),el('div','page-no','— '+String(index+1).padStart(2,'0')+' —'));return node;}
+function pageNode(p,index){const node=el('div','paper-page '+p.layout);const im=el('img','page-image');im.loading='lazy';im.decoding='async';im.src=p.src;im.alt=p.caption||`第${index+1}张照片`;im.draggable=false;const meta=el('div','page-meta');if(p.caption)meta.append(el('p','page-caption',p.caption));const footer=el('div','page-footer');footer.append(el('p','page-date',p.date?dateText(p.date):''),el('div','page-no',String(index+1).padStart(2,'0')));meta.append(footer);node.append(im,meta);return node;}
 function renderReader(){const b=current();if(!b)return;$('readerTitle').textContent=b.title;$('stage').replaceChildren();$('thumbnails').replaceChildren();$('editPage').disabled=!b.pages.length;$('prevPage').disabled=pageIndex<=0;$('nextPage').disabled=pageIndex>=b.pages.length-1;$('pageIndicator').replaceChildren();if(!b.pages.length){const empty=el('div','reader-empty');empty.innerHTML=icon('image');empty.append(el('p',null,'第一页，留给你最喜欢的瞬间。'));const btn=el('button','primary','添加照片');btn.onclick=choosePhotos;empty.append(btn);$('stage').append(empty);$('pageIndicator').textContent='等待第一张照片';return;}
 $('stage').append(pageNode(b.pages[pageIndex],pageIndex));$('pageIndicator').append(el('strong',null,String(pageIndex+1).padStart(2,'0')),document.createTextNode('/ '+String(b.pages.length).padStart(2,'0')));for(let i=0;i<b.pages.length;i++){const btn=el('button','thumb'+(i===pageIndex?' active':''));btn.setAttribute('aria-label',`第${i+1}页`);btn.setAttribute('aria-pressed',String(i===pageIndex));const im=el('img');im.loading='lazy';im.decoding='async';im.src=mediaThumbnail(b.pages[i]);im.alt='';btn.append(im);btn.onclick=()=>jump(i);$('thumbnails').append(btn);}state.positions[b.id]=pageIndex;}
 function cancelFlip(){if(animation){animation.cancel();animation=null;}drag=null;}
@@ -660,7 +671,7 @@ $('engineInfo').onclick=()=>{originalEngineInfo();const details=el('details'),su
 </script>
 <script>/* Original files stay in native private storage; the WebView only receives previews. */
 'use strict';
-$('photoZoomReset').closest('.photo-zoom-controls').insertAdjacentHTML('afterend','<div class="original-actions" id="originalActions"><button class="secondary" id="saveOriginal" hidden>保存原文件</button><button class="secondary" id="enhanceOriginal" hidden>AI 高清增强</button><button class="secondary" id="playMotion" hidden>播放实况</button><button class="secondary" id="pairMotion" hidden>关联实况视频</button><button class="secondary" id="unlinkMotion" hidden>解除关联</button></div><p class="original-status" id="originalStatus" aria-live="polite"></p>');
+$('photoZoomReset').closest('.photo-zoom-controls').insertAdjacentHTML('afterend','<div class="original-actions" id="originalActions"><button class="secondary" id="saveOriginal" hidden>保存原文件</button><button class="secondary" id="playMotion" hidden>播放实况</button><button class="secondary" id="pairMotion" hidden>关联实况视频</button><button class="secondary" id="unlinkMotion" hidden>解除关联</button></div><p class="original-status" id="originalStatus" aria-live="polite"></p>');
 let motionToken='',motionFound=false;
 function originalReference(p){return hasOriginal(p)?p.originalId:/^device-[1-9][0-9]{0,18}$/.test(p?.id||'')&&!isVideo(p)?p.id:null;}
 function originalBook(p){
@@ -677,7 +688,6 @@ updatePhotoViewer=function(){
  originalViewerUpdate();motionToken=uid();motionFound=false;
  const p=photoSet[photoAt],reference=originalReference(p),book=originalBook(p);
  $('saveOriginal').hidden=!reference||!globalThis.PhotoMedia?.exportOriginal;
- $('enhanceOriginal').hidden=isVideo(p)||!reference||!globalThis.PhotoMedia?.enhanceOriginal;
  $('pairMotion').hidden=isVideo(p)||!book||!globalThis.AlbumMedia?.pairVideo;
  $('unlinkMotion').hidden=!p?.liveVideoId||!book;
  $('playMotion').hidden=!localVideoId(p?.liveVideoId);
@@ -697,12 +707,6 @@ $('saveOriginal').onclick=()=>{
  const p=photoSet[photoAt],id=originalReference(p);if(!id||!globalThis.PhotoMedia?.exportOriginal)return;
  busy(true,'请选择原文件保存位置，不缩放、不重新编码。');
  try{PhotoMedia.exportOriginal(id,p.filename||'FlipYear-original',p.originalSha256||'',p.originalBytes||0);}catch{onOriginalMessage('原文件未保存：选择器不可用');}
-};
-$('enhanceOriginal').onclick=()=>{
- const p=photoSet[photoAt],id=originalReference(p);
- if(!id||isVideo(p)||!globalThis.PhotoMedia?.enhanceOriginal)return;
- busy(true,'正在打开本机 AI 高清增强…');
- try{PhotoMedia.enhanceOriginal(id);}catch{onOriginalMessage('无法打开本机 AI 增强：请检查照片授权');}
 };
 $('playMotion').onclick=()=>{
  const p=photoSet[photoAt];
@@ -4647,11 +4651,13 @@ class WebGLYearEngine {
  }
  async paintPhoto(index){
   const p=this.photos[index],canvas=document.createElement('canvas');canvas.width=600;canvas.height=800;canvas.dayHits=[];const c=canvas.getContext('2d');c.fillStyle='#fffaf0';c.fillRect(0,0,600,800);
-  const image=await this.image(p.src),full=p.layout==='full',box=full?{x:0,y:0,w:600,h:800}:{x:32,y:40,w:536,h:p.layout==='polaroid'?570:600};
+  const image=await this.image(p.src),full=p.layout==='full',border=full?0:24,box={x:border,y:border,w:600-border*2,h:800-border*2};
   if(image)this.drawImage(c,image,box.x,box.y,box.w,box.h);else{c.fillStyle='#e7dfd2';c.fillRect(box.x,box.y,box.w,box.h);c.fillStyle='#635748';c.font='22px sans-serif';c.fillText('照片暂不可用',60,300);}
-  if(full){c.fillStyle='#0008';c.fillRect(0,650,600,150);}c.fillStyle=full?'#fff':'#514737';c.font='24px sans-serif';
-  const caption=Array.from(p.caption||'');let line='',row=0;for(const letter of caption){if(c.measureText(line+letter).width>520){c.fillText(line,40,full?700+row*32:690+row*32);line='';if(++row>=2)break;}line+=letter;}if(row<2)c.fillText(line,40,(full?700:690)+row*32);
-  c.font='18px sans-serif';c.fillText(p.date||'',40,770);c.textAlign='right';c.fillText(String(index+1).padStart(2,'0'),560,770);
+  // Metadata sits over the photograph; no empty caption area shrinks the image.
+  const shade=c.createLinearGradient(0,600,0,800-border);shade.addColorStop(0,'#0000');shade.addColorStop(1,'#0009');c.fillStyle=shade;c.fillRect(box.x,600,box.w,box.h+box.y-600);
+  c.fillStyle='#fff';c.font='24px sans-serif';
+  const caption=Array.from(p.caption||'');let line='',row=0;for(const letter of caption){if(c.measureText(line+letter).width>496){c.fillText(line,40,682+row*32);line='';if(++row>=2)break;}line+=letter;}if(row<2)c.fillText(line,40,682+row*32);
+  c.font='18px sans-serif';c.fillText(p.date||'',40,752);c.textAlign='right';c.fillText(String(index+1).padStart(2,'0'),560,752);
   if(isVideo(p)){c.textAlign='center';c.font='56px sans-serif';c.fillText('▶',300,400);}return this.rounded(canvas);
  }
  render(single=this.visible().length===1){
