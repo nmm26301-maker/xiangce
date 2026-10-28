@@ -39,7 +39,12 @@ const poster=id=>'https://flipyear.local/custom-media/'+id+'/poster';
   // Failed replacement rolls back the link and drops only the newly copied video.
   await p.evaluate(async result=>{const previous=save;save=async()=>false;try{nativeResult=result;await onAlbumMediaResult();}finally{save=previous;}},{type:'pair',token:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',target:book,pageId,pages:[{...video,videoId:W,src:poster(W)}],created:[W]});
   assert.equal(await p.evaluate(()=>current().pages[0].liveVideoId),V);assert.equal(await p.evaluate(()=>requests.ack.at(-1).keep),false);
-  await p.keyboard.press('Escape');await p.locator('#closeReader').click();await p.locator('[data-tab="settings"]').click();await p.locator('#cleanupVideos').click();await p.locator('#confirmCleanupVideos').click();assert.deepEqual((await p.evaluate(()=>requests.cleanup.at(-1))).sort(),[P,V].sort());
+  await p.keyboard.press('Escape');await p.locator('#closeReader').click();await p.locator('[data-tab="settings"]').click();await p.locator('#cleanupVideos').click();
+  const cleanupBefore=await p.evaluate(()=>requests.cleanup.length);
+  await p.locator('#confirmCleanupVideos').click();
+  // The click handler persists IndexedDB before it calls the native cleanup bridge.
+  await p.waitForFunction(before=>requests.cleanup.length>before,cleanupBefore);
+  assert.deepEqual((await p.evaluate(()=>requests.cleanup.at(-1))).sort(),[P,V].sort());
   const restore=JSON.parse(JSON.stringify(archive));restore.books[0].pages[0].originalId=Q;restore.books[0].pages[0].src=poster(Q);restore.books[0].pages[0].liveVideoId=W;
   const before=await p.evaluate(()=>state.books.length);
   await p.evaluate(async result=>{nativeResult=result;await onAlbumMediaResult();},{type:'restore',token:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',backup:restore,created:[Q,W]});
