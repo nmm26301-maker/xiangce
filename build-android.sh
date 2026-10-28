@@ -4,6 +4,7 @@ cd "$(dirname "$0")"
 : "${ANDROID_HOME:?请设置 ANDROID_HOME 指向 Android SDK}"
 build_tools="${ANDROID_BUILD_TOOLS:-$ANDROID_HOME/build-tools/35.0.0}"
 android_jar="${ANDROID_JAR:-$ANDROID_HOME/platforms/android-35/android.jar}"
+python3 scripts/prepare-ai.py
 rm -rf build/classes build/dex build/compiled build/generated
 mkdir -p build/classes build/dex build/compiled build/generated signing
 "$build_tools/aapt2" compile --dir app/src/main/res -o build/compiled
@@ -12,6 +13,13 @@ java com.sun.tools.javac.Main --release 8 -cp "$android_jar" -d build/classes bu
 java sun.tools.jar.Main cf build/classes.jar -C build/classes .
 "$build_tools/d8" --min-api 26 --lib "$android_jar" --output build/dex build/classes.jar
 cp build/resources.apk build/unsigned.apk
+python3 - <<'PYZIP'
+from pathlib import Path
+import zipfile
+with zipfile.ZipFile('build/unsigned.apk', 'a', compression=zipfile.ZIP_DEFLATED) as z:
+    for native in sorted(Path('app/src/main/jniLibs').glob('*/*.so')):
+        z.write(native, 'lib/' + native.parent.name + '/' + native.name)
+PYZIP
 (cd build/dex && zip -q -u ../unsigned.apk classes.dex)
 "$build_tools/zipalign" -f -p 4 build/unsigned.apk build/aligned.apk
 if [[ ! -f signing/flipyear-debug.jks ]]; then

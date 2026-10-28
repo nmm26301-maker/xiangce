@@ -13,6 +13,10 @@ grep -F 'AlbumArchive.photoId(path.get(1))' "$provider" >/dev/null
 grep -F 'Intent.FLAG_GRANT_READ_URI_PERMISSION' "$share" >/dev/null
 grep -F 'Intent.EXTRA_STREAM' "$share" >/dev/null
 grep -F 'OriginalShareProvider.uri(id)' "$share" >/dev/null
-grep -F 'globalThis.PhotoMedia?.shareForEnhancement' "$ui" >/dev/null
+grep -F 'globalThis.PhotoMedia?.enhanceOriginal' "$ui" >/dev/null
 grep -F 'AI 高清增强' "$ui" >/dev/null
-echo 'AI original-share integration policy checks passed.'
+grep -F 'android:extractNativeLibs="true"' "$manifest" >/dev/null
+grep -F 'nativeLibraryDir' app/src/main/java/com/flipyear/album/AiFiles.java >/dev/null
+grep -F 'models-Real-ESRGANv3-general' app/src/main/java/com/flipyear/album/AiFiles.java >/dev/null
+python3 scripts/prepare-ai.py
+echo 'Embedded AI and original-share policy checks passed.'

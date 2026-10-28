@@ -677,7 +677,7 @@ updatePhotoViewer=function(){
  originalViewerUpdate();motionToken=uid();motionFound=false;
  const p=photoSet[photoAt],reference=originalReference(p),book=originalBook(p);
  $('saveOriginal').hidden=!reference||!globalThis.PhotoMedia?.exportOriginal;
- $('enhanceOriginal').hidden=isVideo(p)||!reference||!globalThis.PhotoMedia?.shareForEnhancement;
+ $('enhanceOriginal').hidden=isVideo(p)||!reference||!globalThis.PhotoMedia?.enhanceOriginal;
  $('pairMotion').hidden=isVideo(p)||!book||!globalThis.AlbumMedia?.pairVideo;
  $('unlinkMotion').hidden=!p?.liveVideoId||!book;
  $('playMotion').hidden=!localVideoId(p?.liveVideoId);
@@ -700,9 +700,9 @@ $('saveOriginal').onclick=()=>{
 };
 $('enhanceOriginal').onclick=()=>{
  const p=photoSet[photoAt],id=originalReference(p);
- if(!id||isVideo(p)||!globalThis.PhotoMedia?.shareForEnhancement)return;
- busy(true,'正在准备完整原图，通过安卓分享菜单交给本地 AI 图片增强应用…');
- try{PhotoMedia.shareForEnhancement(id);}catch{onOriginalMessage('无法启动 AI 增强分享：请检查照片授权');}
+ if(!id||isVideo(p)||!globalThis.PhotoMedia?.enhanceOriginal)return;
+ busy(true,'正在打开本机 AI 高清增强…');
+ try{PhotoMedia.enhanceOriginal(id);}catch{onOriginalMessage('无法打开本机 AI 增强：请检查照片授权');}
 };
 $('playMotion').onclick=()=>{
  const p=photoSet[photoAt];

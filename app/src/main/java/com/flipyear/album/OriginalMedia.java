@@ -88,6 +88,21 @@ public final class OriginalMedia {
             }
         }
     }
+    @JavascriptInterface public void enhanceOriginal(String id) {
+        worker.execute(() -> {
+            try {
+                Uri uri = photoUri(activity, id);
+                try (InputStream in = activity.getContentResolver().openInputStream(uri)) {
+                    if (in == null) throw new IOException("原图不可读");
+                }
+                activity.runOnUiThread(() -> {
+                    try { activity.startActivity(new Intent(activity, EnhanceActivity.class).putExtra(EnhanceActivity.PHOTO_ID, id)); message("已打开本机 AI 高清增强，原图保持不变"); }
+                    catch (Exception error) { message("内置增强页面无法打开：" + error.getMessage()); }
+                });
+            } catch (Exception error) { message("原图不可用于增强：" + error.getMessage()); }
+        });
+    }
+
     /** 通过安卓分享器将原始字节 URI 授权给用户选择的本地 AI 增强应用。 */
     @JavascriptInterface public void shareForEnhancement(String id) {
         worker.execute(() -> {

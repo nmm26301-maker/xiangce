@@ -1,3 +1,14 @@
+# 2.8.0 内置 AI 来源与实现审查 · 2026-10-28
+
+- 固定上游 `tumuyan/RealSR-NCNN-Android` 1.13.2（提交 `0eb16763761e46f55c6223439ca1ad20216bc4ab`），APK SHA-256 `d7b68c2589ad1cb9a953ed8ca001f6600217dceb4ee7053bc21e8c3899c4c6e7`。构建脚本校验源 APK 和 4 个提取资源；不打包外部应用界面。
+- ARM64 PIE 可执行文件具有 `/system/bin/linker64` 解释器，依赖 `libncnn.so` 与 Android 系统库。以 `.so` 名装入 APK 的 lib 目录，通过 `extractNativeLibs=true` 由安装器提取，运行时校验两份本机库哈希。从 `nativeLibraryDir` 执行以符合 Android 10+ 对可写应用目录执行权限的限制。
+- 命令参数使用 ProcessBuilder 数组；不经 shell、不接收用户命令；使用 CPU `-g -1`、tile 64、线程 1:2:1、4 倍 PNG 输出。上游 main.cpp 要求模型目录含 `models`，本实现采用 `models-Real-ESRGANv3-general-v1`；自动识别模型输入输出张量名。
+- 模型为 Real-ESRGANv3-general x4，权重约 2.4 MB。模型加载与实际推理在主机 ncnn 验证，不冒称 Android 设备验证。原始 EXIF 方向由 PhotoDecoder 处理，输入解码有尺寸边界，输出必须为正确尺寸的 PNG 并通过预览解码。
+- MIT、BSD、Apache、LLVM 例外等相关完整许可在 `app/src/main/assets/ai-engine/NOTICES.txt`。上游代码链接和二进制溯源在 manifest 中；可从 https://github.com/tumuyan/RealSR-NCNN-Android 获取源码。
+- 真机仍需验收原生子进程启动、CPU 推理速度、内存及文件选择器。没有新增联网权限。
+
+以下为之前版本的历史审查记录：
+
 # 开源方案评估 · 2026-10-24
 
 先检索并核查 GitHub 仓库、包的许可证、README、API 契约和已知问题，再接入翻页引擎。

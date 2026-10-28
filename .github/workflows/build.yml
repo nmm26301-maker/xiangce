@@ -28,6 +28,8 @@ jobs:
           test -x "$manager"
           yes | "$manager" --licenses >/dev/null || true
           "$manager" "platforms;android-35" "build-tools;35.0.0"
+      - name: Prepare bundled offline AI
+        run: python3 scripts/prepare-ai.py
       - name: Generate web edition
         run: python3 scripts/build-web.py
       - name: JavaScript syntax
