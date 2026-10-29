@@ -1,3 +1,4 @@
+const openReaderTools=require('./reader-tools.cjs');
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.CHROME_BIN,args:['--no-sandbox','--enable-unsafe-swiftshader']});
@@ -14,8 +15,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
    const out=[];for(let i=0;i<3;i++){
     const canvas=await customEngine.paintPhoto(i),c=canvas.getContext('2d'),color=(x,y)=>Array.from(c.getImageData(x,y,1,1).data);
     const red=(x,y)=>{const a=color(x,y);return a[0]>200&&a[1]<90&&a[2]<90;};let horizontal=0,vertical=0;
-    for(let j=100;j<500;j++)if(red(j,400))horizontal++;for(let j=200;j<600;j++)if(red(300,j))vertical++;
-    out.push({top:color(300,48),bottom:color(300,738),rim:color(8,400),horizontal,vertical});
+    for(let j=100;j<500;j++)if(red(j,Math.round(canvas.height/2)))horizontal++;for(let j=Math.round(canvas.height/2)-200;j<Math.round(canvas.height/2)+200;j++)if(red(300,j))vertical++;
+    out.push({top:color(300,48),bottom:color(300,canvas.height-62),rim:color(4,Math.round(canvas.height/2)),horizontal,vertical});
    }return out;
   });
   for(const [i,s] of samples.entries()){
@@ -25,7 +26,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   }
   await p.screenshot({path:'/tmp/flipyear-frame-3d.png',fullPage:true});
   assert.equal(await p.locator('#enhanceOriginal').count(),0);
-  await p.locator('#customRenderMode').click();await p.waitForFunction(()=>customEngine&&!customEngine.isWebGL&&customEngine.isReady());
+  await openReaderTools(p);await p.locator('#customRenderMode').click();await p.waitForFunction(()=>customEngine&&!customEngine.isWebGL&&customEngine.isReady());
   for(const viewport of [{width:375,height:812},{width:844,height:390},{width:768,height:1024}]){
    await p.setViewportSize(viewport);await p.waitForTimeout(350);
    for(const light of [false,true]){

@@ -1,3 +1,4 @@
+const openReaderTools=require('./reader-tools.cjs');
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const P='local-photo-11111111-1111-4111-8111-111111111111',Q='local-photo-22222222-2222-4222-8222-222222222222';
 const V='local-video-33333333-3333-4333-8333-333333333333',W='local-video-44444444-4444-4444-8444-444444444444';
@@ -20,7 +21,7 @@ const poster=id=>'https://flipyear.local/custom-media/'+id+'/poster';
   });
   const p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('https://flipyear.local/index.html');await p.waitForSelector('.year-option');await p.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});
   await p.locator('[data-tab="albums"]').click();await p.locator('#newBook').click();await p.locator('#bookName').fill('原图与实况');await p.locator('#bookForm .primary').click();await p.waitForFunction(()=>current()?.title==='原图与实况'&&!$('reader').hidden);
-  const book=await p.evaluate(()=>current().id);await p.locator('#addPhoto').click();assert.deepEqual(await p.evaluate(()=>requests.photos),[book]);
+  const book=await p.evaluate(()=>current().id);await openReaderTools(p);await p.locator('#addPhoto').click();assert.deepEqual(await p.evaluate(()=>requests.photos),[book]);
   const page={kind:'photo',originalId:P,src:poster(P),originalBytes:12345678,originalSha256:'a'.repeat(64),originalMime:'image/jpeg',width:6000,height:4000,filename:'IMG_20240901.jpg',date:'',caption:'',layout:'classic'};
   await p.evaluate(async result=>{nativeResult=result;await onAlbumMediaResult();},{type:'importPhotos',token:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',target:book,pages:[page],created:[P]});
   assert.equal(await p.evaluate(()=>current().pages[0].originalId),P);assert.equal(await p.evaluate(()=>current().pages[0].date),'2024-09-01');

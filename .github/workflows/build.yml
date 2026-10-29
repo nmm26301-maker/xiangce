@@ -2,6 +2,9 @@ name: Build and test FlipYear
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "releases/**"
+      - "**/*.md"
   workflow_dispatch:
 
 permissions:
@@ -37,6 +40,7 @@ jobs:
           node --check app/src/main/assets/original-media.js
           node --check app/src/main/assets/webgl-yearbook.js
           node --check app/src/main/assets/photo-detail.js
+          node --check app/src/main/assets/reader-fullscreen.js
           node --check tests/yearbook.cjs
       - name: Java policy regression tests
         run: |
@@ -55,6 +59,7 @@ jobs:
           node tests/webgl-yearbook.cjs
           node tests/photo-detail.cjs
           node tests/photo-frame.cjs
+          node tests/reader-fullscreen.cjs
       - name: Resolve APK version
         run: |
           version=$(python3 -c "import xml.etree.ElementTree as e; print(e.parse('app/src/main/AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName'])")

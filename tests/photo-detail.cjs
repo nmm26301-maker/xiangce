@@ -1,3 +1,4 @@
+const openReaderTools=require('./reader-tools.cjs');
 /* Native region transport is simulated with real crops; Android device testing is separate. */
 const {chromium}=require('playwright'),sharp=require('sharp'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 (async()=>{
@@ -26,7 +27,7 @@ const {chromium}=require('playwright'),sharp=require('sharp'),assert=require('no
   await p.locator('[data-tab="albums"]').click();await p.locator('#continueBook').click();await p.waitForFunction(()=>customEngine?.isWebGL&&customEngine.isReady());
   assert.match(await p.locator('#customRenderMode').innerText(),/已开启/);assert.equal(await p.evaluate(()=>customEngine.stacks.length),14);
   await p.locator('#nextPage').click();await p.waitForFunction(()=>pageIndex===1&&!customEngine.isAnimating());
-  await p.locator('#customViewPhoto').click();await p.waitForSelector('#photoViewer:not([hidden])');await p.keyboard.press('Escape');assert.equal(await p.evaluate(()=>pageIndex),1);
+  await openReaderTools(p);await p.locator('#customViewPhoto').click();await p.waitForSelector('#photoViewer:not([hidden])');await p.keyboard.press('Escape');assert.equal(await p.evaluate(()=>pageIndex),1);
   const b=await p.locator('#stage canvas').boundingBox(),x=b.x+b.width*.85,y=b.y+b.height/2;
   await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x-b.width*.4,y,{steps:12});await p.waitForFunction(()=>customEngine.turn?.ready);
   assert.ok(await p.evaluate(()=>{const a=customEngine.book.flipGeom.attributes.position;return Array.from({length:a.count},(_,i)=>a.getZ(i)).some(z=>z>.3);}));

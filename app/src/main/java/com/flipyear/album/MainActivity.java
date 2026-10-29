@@ -37,6 +37,7 @@ public final class MainActivity extends Activity {
     private OriginalMedia originalMedia;
     private String previousAccess = "";
     private boolean launchingVideo;
+    private boolean readerFullscreen;
     private volatile int pendingWidgetId;
     private android.database.ContentObserver mediaObserver;
     private final android.os.Handler mediaHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -125,7 +126,35 @@ public final class MainActivity extends Activity {
         else web.loadUrl("file:///android_asset/migrate.html");
     }
 
+    private void applyReaderFullscreen() {
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams attributes = getWindow().getAttributes();
+            attributes.layoutInDisplayCutoutMode = readerFullscreen ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            getWindow().setAttributes(attributes);
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(!readerFullscreen);
+            android.view.WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                if (readerFullscreen) controller.hide(android.view.WindowInsets.Type.systemBars());
+                else controller.show(android.view.WindowInsets.Type.systemBars());
+                return;
+            }
+        }
+        getWindow().getDecorView().setSystemUiVisibility(readerFullscreen ? View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION : 0);
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (focused && readerFullscreen) applyReaderFullscreen();
+    }
+
     private final class BackupBridge {
+        @JavascriptInterface public void setReaderFullscreen(boolean enabled) {
+            runOnUiThread(() -> { readerFullscreen = enabled; applyReaderFullscreen(); });
+        }
+
         @JavascriptInterface
         public void playVideo(String mediaId) {
             runOnUiThread(() -> {

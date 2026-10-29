@@ -5,16 +5,16 @@ class WebGLYearEngine {
   this.root=root;this.isWebGL=true;this.disposed=false;this.ready=false;this.events=new Map();this.cache=new Map();this.listeners=[];this.generation=0;
   this.album=album;this.count=album?album.pages.length:14;this.last=this.count-1;this.year=selectedYear;this.photos=album?album.pages.slice():yearPhotos.slice();this.byDate=indexYearPhotos(this.photos).byDate;
   this.wide=!album&&(innerWidth>=800||(innerWidth>=640&&innerWidth>innerHeight));this.index=this.normalize(position);
-  this.textureWidth=this.wide?860:600;this.textureHeight=this.wide?650:764;
+  this.textureWidth=this.wide?860:600;this.textureHeight=album?Math.round(600*Math.max(1,root.clientHeight)/Math.max(1,root.clientWidth)):this.wide?650:764;
   if(!album)$('yearReader').classList.toggle('webgl-wide',this.wide&&innerHeight<=560);
   this.canvas=el('canvas','webgl-book-canvas');this.canvas.tabIndex=0;this.canvas.setAttribute('role','img');this.canvas.setAttribute('aria-label',album?'立体相册，滑动翻页，轻点照片放大；也可用翻页和查看照片按钮':'立体照片日历，可滑动翻页；也可用月份、翻页和查看本月影像按钮操作');root.replaceChildren(this.canvas);
   if(!this.canvas.getContext('webgl2',{alpha:true,antialias:true}))throw Error('WebGL 2 不可用');
-  this.book=new FlipYearWebGL.Book3D(this.canvas,{pageWidth:this.wide?1.8:1.65,pageHeight:album?2.2:this.wide?1.8*650/860:2.1,segments:40,theme:state.settings.light?'light':'dark'});
+  this.book=new FlipYearWebGL.Book3D(this.canvas,{pageWidth:this.wide?1.8:1.65,pageHeight:album?1.65*this.textureHeight/this.textureWidth:this.wide?1.8*650/860:2.1,segments:40,theme:state.settings.light?'light':'dark'});
   cancelAnimationFrame(this.book._rafId); // Demand-render: no idle GPU loop behind overlays.
   this.book._amb.intensity=2;this.book._key.intensity=1.3;
-  for(const object of this.book.scene.children)if(object.geometry?.type==='BoxGeometry'){object.material.color.setHex(0x8c7b64);object.position.z=-.015;}
+  for(const object of this.book.scene.children)if(object.geometry?.type==='BoxGeometry'){object.material.color.setHex(0x8c7b64);object.position.z=-.015;if(album)object.visible=false;}
   this.book.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));this.book._key.shadow.mapSize.set(512,512);
-  this.book.resize(root.clientWidth,$('yearReader').classList.contains('webgl-wide')?root.clientHeight:Math.max(260,Math.min(innerHeight*.55,this.wide?440:470)));
+  this.book.resize(root.clientWidth,album||$('yearReader').classList.contains('webgl-wide')?root.clientHeight:Math.max(260,Math.min(innerHeight*.55,this.wide?440:470)));
   this.canvas.style.height=this.book.renderer.domElement.height/this.book.renderer.getPixelRatio()+'px';
   this.stacks=[];for(const side of ['L','R'])for(let i=1;i<=7;i++){const sheet=this.book['mesh'+side].clone();sheet.material=sheet.material.clone();sheet.material.map=null;sheet.material.color.setHex(i%2?0xd8cfbe:0xf4ecd9);sheet.position.z=-i*.009;sheet.position.x+=i*.002;sheet.position.y-=i*.003;sheet.userData.stackSide=side;this.book.scene.add(sheet);this.stacks.push(sheet);}this.bind();this.readyPromise=this.show();
  }
@@ -63,22 +63,22 @@ class WebGLYearEngine {
   const spine=ctx.createLinearGradient(0,0,32,0);spine.addColorStop(0,'#574a2d22');spine.addColorStop(1,'#574a2d00');ctx.fillStyle=spine;ctx.fillRect(0,0,32,H);return this.rounded(canvas);
  }
  async paintPhoto(index){
-  const p=this.photos[index],canvas=document.createElement('canvas');canvas.width=600;canvas.height=800;canvas.dayHits=[];const c=canvas.getContext('2d');c.fillStyle='#fffaf0';c.fillRect(0,0,600,800);
-  const image=await this.image(p.src),full=p.layout==='full',border=full?0:24,box={x:border,y:border,w:600-border*2,h:800-border*2};
-  if(image)this.drawImage(c,image,box.x,box.y,box.w,box.h);else{c.fillStyle='#e7dfd2';c.fillRect(box.x,box.y,box.w,box.h);c.fillStyle='#635748';c.font='22px sans-serif';c.fillText('照片暂不可用',60,300);}
+  const p=this.photos[index],canvas=document.createElement('canvas');const W=this.textureWidth,H=this.textureHeight;canvas.width=W;canvas.height=H;canvas.dayHits=[];const c=canvas.getContext('2d');c.fillStyle='#fffaf0';c.fillRect(0,0,W,H);
+  const image=await this.image(p.src),full=p.layout==='full',border=full?0:6,box={x:border,y:border,w:W-border*2,h:H-border*2};
+  if(image)this.drawImage(c,image,box.x,box.y,box.w,box.h);else{c.fillStyle='#e7dfd2';c.fillRect(box.x,box.y,box.w,box.h);c.fillStyle='#635748';c.font='22px sans-serif';c.fillText('照片暂不可用',40,H/2);}
   // Metadata sits over the photograph; no empty caption area shrinks the image.
-  const shade=c.createLinearGradient(0,600,0,800-border);shade.addColorStop(0,'#0000');shade.addColorStop(1,'#0009');c.fillStyle=shade;c.fillRect(box.x,600,box.w,box.h+box.y-600);
+  const footerHeight=p.caption?Math.min(200,H*.5):Math.min(100,H*.25),shade=c.createLinearGradient(0,H-footerHeight,0,H-border);shade.addColorStop(0,'#0000');shade.addColorStop(1,'#0009');c.fillStyle=shade;c.fillRect(box.x,H-footerHeight,box.w,footerHeight-border);
   c.fillStyle='#fff';c.font='24px sans-serif';
-  const caption=Array.from(p.caption||'');let line='',row=0;for(const letter of caption){if(c.measureText(line+letter).width>496){c.fillText(line,40,682+row*32);line='';if(++row>=2)break;}line+=letter;}if(row<2)c.fillText(line,40,682+row*32);
-  c.font='18px sans-serif';c.fillText(p.date||'',40,752);c.textAlign='right';c.fillText(String(index+1).padStart(2,'0'),560,752);
-  if(isVideo(p)){c.textAlign='center';c.font='56px sans-serif';c.fillText('▶',300,400);}return this.rounded(canvas);
+  const caption=Array.from(p.caption||'');let line='',row=0;for(const letter of caption){if(c.measureText(line+letter).width>496){c.fillText(line,40,H-118+row*32);line='';if(++row>=2)break;}line+=letter;}if(row<2)c.fillText(line,40,H-118+row*32);
+  c.font='18px sans-serif';c.fillText(p.date||'',40,H-48);c.textAlign='right';c.fillText(String(index+1).padStart(2,'0'),W-40,H-48);
+  if(isVideo(p)){c.textAlign='center';c.font='56px sans-serif';c.fillText('▶',W/2,H/2);}return this.rounded(canvas);
  }
  render(single=this.visible().length===1){
   if(this.disposed)return;
   const b=this.book,w=this.root.clientWidth,h=parseFloat(this.canvas.style.height),aspect=w/h;
   const progress=this.turn?.progress||0,from=single?1:2,to=this.turn?(this.visible(this.turn.target).length===1?1:2):from,leaves=from+(to-from)*progress;
-  const needed=Math.max(b.PH*1.14,b.PW*leaves*1.14/aspect),distance=needed/(2*Math.tan(b.camera.fov*Math.PI/360));
-  const center=b.PW/2*(2-leaves);b.camera.position.set(center+.14,.34,distance);for(const sheet of this.stacks)sheet.visible=sheet.userData.stackSide==='R'||!single;b.camera.lookAt(center,0,0);b.camera.aspect=aspect;b.camera.updateProjectionMatrix();
+  const margin=this.album?1.015:1.14,needed=Math.max(b.PH*margin,b.PW*leaves*margin/aspect),distance=needed/(2*Math.tan(b.camera.fov*Math.PI/360));
+  const center=b.PW/2*(2-leaves);b.camera.position.set(center+(this.album?0:.14),this.album?0:.34,distance);for(const sheet of this.stacks)sheet.visible=sheet.userData.stackSide==='R'||!single;b.camera.lookAt(center,0,0);b.camera.aspect=aspect;b.camera.updateProjectionMatrix();
   b.meshL.visible=!single;for(const mesh of [b.meshL,b.meshR,b.flipF,b.flipB]){const material=mesh.material;if(material.map.colorSpace!=='srgb'){material.map.colorSpace='srgb';material.map.needsUpdate=true;}material.alphaTest=.05;}b.renderer.render(b.scene,b.camera);
  }
  async show(){
