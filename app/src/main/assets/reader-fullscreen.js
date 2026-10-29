@@ -10,7 +10,7 @@ function setReaderTools(open){fullscreenReader.classList.toggle('tools-open',ope
 readerToolsToggle.onclick=()=>setReaderTools(!fullscreenReader.classList.contains('tools-open'));
 let nativeReadingFullscreen=null;
 function syncReadingFullscreen(){
- const active=!fullscreenReader.hidden||!$('photoViewer').hidden;
+ const active=!$('photoViewer').hidden;
  if(fullscreenReader.hidden)setReaderTools(false);
  if(active===nativeReadingFullscreen)return;nativeReadingFullscreen=active;
  try{globalThis.Android?.setReaderFullscreen?.(active);}catch{}
@@ -26,7 +26,7 @@ for(const node of [fullscreenReader,$('photoViewer')])readingVisibility.observe(
 syncReadingFullscreen();
 let readerViewport='',readerResizeTimer;
 const fullscreenRender=renderReader;
-renderReader=function(){readerViewport=fullscreenReader.clientWidth+':'+fullscreenReader.clientHeight;return fullscreenRender();};
+renderReader=function(){readerViewport=fullscreenReader.clientWidth+':'+fullscreenReader.clientHeight;const result=fullscreenRender();updateReaderPhotoDetails();return result;};
 function resizeFullscreenReader(){
  if(fullscreenReader.hidden)return;
  const size=fullscreenReader.clientWidth+':'+fullscreenReader.clientHeight;
@@ -39,3 +39,9 @@ function resizeFullscreenReader(){
 }
 new ResizeObserver(resizeFullscreenReader).observe(fullscreenReader);
 window.addEventListener('resize',resizeFullscreenReader);
+
+// Keep annotations available without painting over the complete photograph.
+const readerPhotoDetails=el('p','reader-photo-details');readerPhotoDetails.id='readerPhotoDetails';readerTools.append(readerPhotoDetails);
+const fitPhotoChrome=updateCustomChrome;
+function updateReaderPhotoDetails(){const photo=current()?.pages[pageIndex];readerPhotoDetails.textContent=photo?[photo.caption,photo.date].filter(Boolean).join(' · '):'';}
+updateCustomChrome=function(){fitPhotoChrome();updateReaderPhotoDetails();};

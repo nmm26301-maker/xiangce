@@ -18,3 +18,5 @@ UI UX Pro Max 已执行 photography gallery、swipe gesture alternative 等检�
 2.8.1：自建相册照片铺满细边框内部，等比例居中裁切，不拉伸。文字与日期叠在底部，不再预留大块空纸。3D 与兼容阅读器一致；大图查看保持完整原图。UI/UX 检索 photo frame crop aspect ratio 无匹配，改用 image dimension 的响应式建议并以截图与圆形测试图验证裁切和比例。
 
 2.8.2：相册全屏，页形与纹理同时适配以免拉伸，移除占位底板。悬浮「…」披露工具，返回和翻页始终可达，系统栏可临时滑出；尊重安全区与48px目标。沿用已执行的 immersive safe area back navigation 检索结果。
+
+2.8.3：按新参考图改成完整照片居中，纯黑留边，照片不裁切、不拉伸。纸框、渐变与备注不覆盖画面，备注保留在操作面板。不强制沉浸阅读，保留3D卷页。

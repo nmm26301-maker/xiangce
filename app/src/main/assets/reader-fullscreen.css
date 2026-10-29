@@ -1,5 +1,5 @@
 /* Reading surface uses the viewport; tools float above it instead of shrinking it. */
-#reader.fullscreen-reader{height:100dvh;overflow:hidden;background:var(--bg)}
+#reader.fullscreen-reader{height:100dvh;overflow:hidden;background:#000}
 #reader.fullscreen-reader .reader-body{position:absolute;inset:0;width:100%;height:100%;max-width:none;padding:0;display:block}
 #reader.fullscreen-reader #stage{width:100%!important;height:100%!important;max-width:none!important;min-width:0!important;min-height:0!important;aspect-ratio:auto!important;margin:0;perspective:none}
 #reader.fullscreen-reader #stage:before,#reader.fullscreen-reader #stage:after{display:none}
@@ -23,3 +23,10 @@
 #reader.fullscreen-reader.tools-open .reader-actions{display:flex;gap:8px}
 #reader.fullscreen-reader.tools-open .custom-video-toolbar,#reader.fullscreen-reader.tools-open .thumbnails{display:flex}
 @media(max-height:450px){#reader.fullscreen-reader.tools-open .custom-video-toolbar{max-height:calc(100dvh - 170px)}#reader.fullscreen-reader.tools-open .thumbnails{display:none}}
+
+/* Fit the whole photograph on black; layout styles must never crop it. */
+#reader.fullscreen-reader .paper-page:not(.back){background:#000;box-shadow:none;border-radius:0;padding:0}
+#reader.fullscreen-reader .paper-page:before,#reader.fullscreen-reader .paper-page:after,#reader.fullscreen-reader .page-meta{display:none}
+#reader.fullscreen-reader .paper-page:not(.back) .page-image{inset:0;width:100%;height:100%;object-fit:contain;object-position:center;transform:none;border:0;background:#000}
+#readerPhotoDetails{width:100%;margin:0;text-align:center;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+#readerPhotoDetails:empty{display:none}
