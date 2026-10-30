@@ -4,7 +4,7 @@ $('photoZoomReset').closest('.photo-zoom-controls').insertAdjacentHTML('afterend
 let motionToken='',motionFound=false;
 function originalReference(p){return hasOriginal(p)?p.originalId:/^device-[1-9][0-9]{0,18}$/.test(p?.id||'')&&!isVideo(p)?p.id:null;}
 function originalBook(p){
- if(!p)return null;
+ if(!p)return null;if((state.dailyPhotos||[]).some(x=>x.id===p.id))return journalMediaBook('daily');
  if(p.bookId)return state.books.find(b=>b.id===p.bookId&&b.pages.some(x=>x.id===p.id));
  return state.books.find(b=>b.pages.includes(p))||null;
 }

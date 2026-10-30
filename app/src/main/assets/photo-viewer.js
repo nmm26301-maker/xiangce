@@ -129,7 +129,7 @@ bindPhotoTap($('reader'),'.page-image[data-photo-index]',target=>{
 });
 bindPhotoTap($('yearBookFrame'),'[data-action="day"]',target=>{
  if(!yearEngine)return;
- yearEngine.cancelTurn();showPhoto(yearPhotosByDate.get(target.dataset.date)||[],0);
+ yearEngine.cancelTurn();openJournalDay(target.dataset.date);
 });
 const timelinePhotos=renderTimeline;
 renderTimeline=function(){

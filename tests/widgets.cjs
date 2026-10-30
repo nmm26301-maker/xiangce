@@ -1,3 +1,4 @@
+const {openYearTools,openPhotoTools}=require('./year-tools.cjs');
 /* Browser integration for the native widget bridge; launcher/URI grants need Android. */
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
@@ -40,7 +41,7 @@ const path=require('node:path');
   assert.match(await page.locator('#toast').innerText(),/长按桌面/);
   // A warm start closes the annual reader and its dialog before displaying the photo.
   await page.locator('[data-tab="years"]').click();await page.locator('#openAnnual').click();await page.waitForFunction(()=>yearEngine?.isReady());
-  await page.locator('#yearCoverPick').click();await page.waitForSelector('#coverPicks');
+  await openYearTools(page);await page.locator('#yearCoverPick').click();await page.waitForSelector('#coverPicks');
   await page.evaluate(()=>{widgetPending=JSON.stringify({open:true,src:'https://flipyear.local/widget-photo/42?v=2',date:''});onNativeWidgetOpen();});
   assert.equal(await page.locator('#yearReader').isHidden(),true);assert.equal(await page.locator('#dialogLayer').isHidden(),true);
   assert.equal(await page.locator('#photoViewer').isVisible(),true);await page.keyboard.press('Escape');

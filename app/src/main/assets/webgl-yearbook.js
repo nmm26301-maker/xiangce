@@ -5,16 +5,16 @@ class WebGLYearEngine {
   this.root=root;this.isWebGL=true;this.disposed=false;this.ready=false;this.events=new Map();this.cache=new Map();this.listeners=[];this.generation=0;
   this.album=album;this.count=album?album.pages.length:14;this.last=this.count-1;this.year=selectedYear;this.photos=album?album.pages.slice():yearPhotos.slice();this.byDate=indexYearPhotos(this.photos).byDate;
   this.wide=!album&&(innerWidth>=800||(innerWidth>=640&&innerWidth>innerHeight));this.index=this.normalize(position);
-  this.textureWidth=this.wide?860:600;this.textureHeight=album?Math.round(600*Math.max(1,root.clientHeight)/Math.max(1,root.clientWidth)):this.wide?650:764;
+  this.textureWidth=album?600:this.wide?960:840;this.textureHeight=album?Math.round(600*Math.max(1,root.clientHeight)/Math.max(1,root.clientWidth)):this.wide?1152:1260;
   if(!album)$('yearReader').classList.toggle('webgl-wide',this.wide&&innerHeight<=560);
   this.canvas=el('canvas','webgl-book-canvas');this.canvas.tabIndex=0;this.canvas.setAttribute('role','img');this.canvas.setAttribute('aria-label',album?'立体相册，滑动翻页，轻点照片放大；也可用翻页和查看照片按钮':'立体照片日历，可滑动翻页；也可用月份、翻页和查看本月影像按钮操作');root.replaceChildren(this.canvas);
   if(!this.canvas.getContext('webgl2',{alpha:true,antialias:true}))throw Error('WebGL 2 不可用');
-  this.book=new FlipYearWebGL.Book3D(this.canvas,{pageWidth:this.wide?1.8:1.65,pageHeight:album?1.65*this.textureHeight/this.textureWidth:this.wide?1.8*650/860:2.1,segments:40,theme:state.settings.light?'light':'dark'});
+  this.book=new FlipYearWebGL.Book3D(this.canvas,{pageWidth:this.wide?1.8:1.65,pageHeight:album?1.65*this.textureHeight/this.textureWidth:this.wide?1.8*1.2:1.65*1.5,segments:40,theme:state.settings.light?'light':'dark'});
   cancelAnimationFrame(this.book._rafId); // Demand-render: no idle GPU loop behind overlays.
   this.book._amb.intensity=2;this.book._key.intensity=1.3;
-  for(const object of this.book.scene.children)if(object.geometry?.type==='BoxGeometry'){object.material.color.setHex(0x8c7b64);object.position.z=-.015;if(album)object.visible=false;}
+  for(const object of this.book.scene.children)if(object.geometry?.type==='BoxGeometry'){object.material.color.setHex(0x8c7b64);object.position.z=-.015;object.visible=false;}
   this.book.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));this.book._key.shadow.mapSize.set(512,512);
-  this.book.resize(root.clientWidth,album||$('yearReader').classList.contains('webgl-wide')?root.clientHeight:Math.max(260,Math.min(innerHeight*.55,this.wide?440:470)));
+  this.book.resize(root.clientWidth,root.clientHeight);
   this.canvas.style.height=this.book.renderer.domElement.height/this.book.renderer.getPixelRatio()+'px';
   this.stacks=[];for(const side of ['L','R'])for(let i=1;i<=7;i++){const sheet=this.book['mesh'+side].clone();sheet.material=sheet.material.clone();sheet.material.map=null;sheet.material.color.setHex(i%2?0xd8cfbe:0xf4ecd9);sheet.position.z=-i*.009;sheet.position.x+=i*.002;sheet.position.y-=i*.003;sheet.userData.stackSide=side;this.book.scene.add(sheet);this.stacks.push(sheet);}this.bind();this.readyPromise=this.show();
  }
@@ -49,19 +49,21 @@ class WebGLYearEngine {
    const shade=ctx.createLinearGradient(0,0,0,H);shade.addColorStop(0,'#0005');shade.addColorStop(1,'#000b');ctx.fillStyle=index===0?shade:'#ede4d3';ctx.fillRect(0,0,W,H);
    ctx.fillStyle=index===0?'#fff':'#5d5142';ctx.font='bold 104px Georgia';ctx.fillText(String(this.year),40,138);ctx.font='28px sans-serif';ctx.fillText(index===0?'这一年，我的日子。':'每一天，都值得被记住。',40,H-114);ctx.font='16px sans-serif';ctx.fillText('A YEAR TO REMEMBER',42,H-62);return this.rounded(canvas);
   }
-  const month=index-1,color=MONTH_COLORS[month];ctx.fillStyle=color;ctx.font='bold 65px Georgia';ctx.fillText(MONTH_NAMES[month],34,92);ctx.font='bold 46px Georgia';ctx.fillText(String(index).padStart(2,'0'),W-90,88);ctx.fillStyle='#766c5d';ctx.font='21px Georgia';ctx.fillText(String(this.year),210,89);
+  const month=index-1,accent='#836644',pad=28;ctx.fillStyle='#252522';ctx.font='600 56px sans-serif';ctx.fillText(index+' 月',pad,85);ctx.fillStyle='#77766f';ctx.font='24px sans-serif';ctx.textAlign='right';ctx.fillText(String(this.year),W-pad,82);
   const slots=calendarSlots(this.year,month);while(slots.slice(-7).every(d=>!d))slots.splice(-7);
-  const x0=34,y0=164,w=(W-68)/7,h=(H-238)/(slots.length/7);ctx.font='16px sans-serif';ctx.textAlign='center';
-  ['一','二','三','四','五','六','日'].forEach((day,i)=>{ctx.fillStyle='#eee9e1';ctx.fillRect(x0+i*w,126,w-2,28);ctx.fillStyle=color;ctx.fillText(day,x0+(i+.5)*w,146);});
+  const x0=pad,y0=160,gap=6,w=(W-pad*2)/7,h=(H-y0-60)/(slots.length/7);ctx.font='22px sans-serif';ctx.textAlign='center';
+  ['一','二','三','四','五','六','日'].forEach((day,i)=>{ctx.fillStyle=i>4?accent:'#77766f';ctx.fillText(day,x0+(i+.5)*w,132);});
   for(let i=0;i<slots.length;i++){
    if(this.disposed)return canvas;const day=slots[i];if(!day)continue;const x=x0+(i%7)*w,y=y0+Math.floor(i/7)*h,date=`${this.year}-${String(index).padStart(2,'0')}-${String(day).padStart(2,'0')}`,photos=this.byDate.get(date)||[];
-   ctx.fillStyle='#f3eee5';ctx.fillRect(x,y,w-1,h-1);if(photos.length){this.drawImage(ctx,await this.image(mediaThumbnail(photos[0])),x,y,w-1,h-1);canvas.dayHits.push({x,y,w:w-1,h:h-1,date});ctx.fillStyle='#0008';ctx.fillRect(x+w-28,y,27,24);}
-   ctx.fillStyle=photos.length?'#fff':'#766c5d';ctx.font='bold 21px sans-serif';ctx.textAlign='right';ctx.fillText(String(day),x+w-6,y+19);
-   if(photos.length>1){ctx.textAlign='left';ctx.font='14px sans-serif';ctx.fillStyle='#fff';ctx.fillText('+'+(photos.length-1),x+5,y+h-7);}
+   ctx.fillStyle='#f0eee8';ctx.fillRect(x,y,w-gap,h-gap);canvas.dayHits.push({x,y,w:w-gap,h:h-gap,date});
+   if(photos.length){this.drawImage(ctx,await this.image(mediaThumbnail(photos[0])),x,y,w-gap,h-gap);ctx.fillStyle='#0008';ctx.fillRect(x,y,w-gap,36);}
+   ctx.fillStyle=photos.length?'#fff':'#45463f';ctx.font='500 26px sans-serif';ctx.textAlign='left';ctx.fillText(String(day),x+9,y+28);
+   if(!photos.length){ctx.fillStyle='#b4b3a9';ctx.font='28px sans-serif';ctx.textAlign='center';ctx.fillText('+',x+(w-gap)/2,y+(h-gap)*.62);}
+   if(photos.length>1){ctx.textAlign='left';ctx.font='18px sans-serif';ctx.fillStyle='#fff';ctx.fillText('+'+(photos.length-1),x+8,y+h-14);}
   }
-  ctx.fillStyle='#766c5d';ctx.textAlign='left';ctx.font='14px sans-serif';ctx.fillText(`${this.photos.filter(p=>Number(p.date.slice(5,7))===index).length} 个瞬间`,34,H-33);
-  const spine=ctx.createLinearGradient(0,0,32,0);spine.addColorStop(0,'#574a2d22');spine.addColorStop(1,'#574a2d00');ctx.fillStyle=spine;ctx.fillRect(0,0,32,H);return this.rounded(canvas);
+  ctx.fillStyle='#77766f';ctx.textAlign='left';ctx.font='20px sans-serif';ctx.fillText('点击日期，留住这一天',pad,H-22);return this.rounded(canvas);
  }
+
  async paintPhoto(index){
   const p=this.photos[index],canvas=document.createElement('canvas');const W=this.textureWidth,H=this.textureHeight;canvas.width=W;canvas.height=H;canvas.dayHits=[];const c=canvas.getContext('2d');
   c.fillStyle='#000';c.fillRect(0,0,W,H);
@@ -76,8 +78,8 @@ class WebGLYearEngine {
   if(this.disposed)return;
   const b=this.book,w=this.root.clientWidth,h=parseFloat(this.canvas.style.height),aspect=w/h;
   const progress=this.turn?.progress||0,from=single?1:2,to=this.turn?(this.visible(this.turn.target).length===1?1:2):from,leaves=from+(to-from)*progress;
-  const margin=this.album?1:1.14,needed=Math.max(b.PH*margin,b.PW*leaves*margin/aspect),distance=needed/(2*Math.tan(b.camera.fov*Math.PI/360));
-  const center=b.PW/2*(2-leaves);b.camera.position.set(center+(this.album?0:.14),this.album?0:.34,distance);for(const sheet of this.stacks)sheet.visible=!this.album&&(sheet.userData.stackSide==='R'||!single);b.camera.lookAt(center,0,0);b.camera.aspect=aspect;b.camera.updateProjectionMatrix();
+  const margin=this.album?1:1.025,needed=Math.max(b.PH*margin,b.PW*leaves*margin/aspect),distance=needed/(2*Math.tan(b.camera.fov*Math.PI/360));
+  const center=b.PW/2*(2-leaves);b.camera.position.set(center,0,distance);for(const sheet of this.stacks)sheet.visible=!this.album&&(sheet.userData.stackSide==='R'||!single);b.camera.lookAt(center,0,0);b.camera.aspect=aspect;b.camera.updateProjectionMatrix();
   b.meshL.visible=!single;for(const mesh of [b.meshL,b.meshR,b.flipF,b.flipB]){const material=mesh.material;if(material.map.colorSpace!=='srgb'){material.map.colorSpace='srgb';material.map.needsUpdate=true;}material.alphaTest=.05;}b.renderer.render(b.scene,b.camera);
  }
  async show(){
@@ -120,7 +122,7 @@ class WebGLYearEngine {
   const rect=this.canvas.getBoundingClientRect(),ray=new FlipYearWebGL.Raycaster();ray.setFromCamera(new FlipYearWebGL.Vector2((x-rect.left)/rect.width*2-1,1-(y-rect.top)/rect.height*2),this.book.camera);
   const objects=this.visible().length===1?[this.book.meshR]:[this.book.meshL,this.book.meshR],hits=ray.intersectObjects(objects);if(!hits.length)return;
   const hit=hits[0],which=objects.indexOf(hit.object),texture=this.displayed[which],px=hit.uv.x*texture.width,py=(1-hit.uv.y)*texture.height;
-  const day=texture?.dayHits.find(r=>px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h);if(this.album){showPhoto(this.photos,this.index);return;}if(day)showPhoto(this.byDate.get(day.date)||[],0);
+  const day=texture?.dayHits.find(r=>px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h);if(this.album){showPhoto(this.photos,this.index);return;}if(day)openJournalDay(day.date);
  }
  listen(node,name,fn,options){node.addEventListener(name,fn,options);this.listeners.push(()=>node.removeEventListener(name,fn,options));}
  bind(){
@@ -139,7 +141,7 @@ class WebGLYearEngine {
  }
 }
 function mountWebGLYearbook(month){
- const position=month===null?Number(state.positions['year:'+selectedYear]||0):month+1;destroyYearEngine();$('yearBookFrame').classList.add('webgl-reading');
+ const position=yearStartPage(month);destroyYearEngine();$('yearBookFrame').classList.add('webgl-reading');
  try{
   const engine=new WebGLYearEngine($('yearBookMount'),position);yearEngine=engine;
   engine.on('flip',()=>{updateYearChrome();state.positions['year:'+selectedYear]=engine.getCurrentPageIndex();save();});engine.on('changeState',updateYearChrome);

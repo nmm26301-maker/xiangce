@@ -1,7 +1,7 @@
 name: Build and test FlipYear
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/**"]
     paths-ignore:
       - "releases/**"
       - "**/*.md"
@@ -42,6 +42,7 @@ jobs:
           node --check app/src/main/assets/photo-detail.js
           node --check app/src/main/assets/reader-fullscreen.js
           node --check tests/yearbook.cjs
+          node --check app/src/main/assets/daily-journal.js
       - name: Java policy regression tests
         run: |
           bash tests/native-policy.sh
@@ -51,6 +52,7 @@ jobs:
           npx playwright install --with-deps chromium
           node tests/functional.cjs
           node tests/yearbook.cjs
+          node tests/daily-journal.cjs
           node tests/photo-viewer.cjs
           node tests/widgets.cjs
           node tests/videos.cjs
