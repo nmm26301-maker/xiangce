@@ -10,7 +10,7 @@ function setReaderTools(open){fullscreenReader.classList.toggle('tools-open',ope
 readerToolsToggle.onclick=()=>setReaderTools(!fullscreenReader.classList.contains('tools-open'));
 let nativeReadingFullscreen=null;
 function syncReadingFullscreen(){
- const active=!$('photoViewer').hidden;
+ const active=!$('photoViewer').hidden&&$('yearReader').hidden;
  if(fullscreenReader.hidden)setReaderTools(false);
  if(active===nativeReadingFullscreen)return;nativeReadingFullscreen=active;
  try{globalThis.Android?.setReaderFullscreen?.(active);}catch{}

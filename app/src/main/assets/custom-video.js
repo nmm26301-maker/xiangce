@@ -38,7 +38,7 @@ function validateAlbumArchive(value){
 }
 
 const photoExportBackup=exportBackup;
-exportBackup=async function(books=state.books){if(!books.some(b=>b.pages.some(p=>pageMediaIds(p).length)))return photoExportBackup(books);if(!globalThis.AlbumMedia?.saveArchive){showToast('含视频的相册请在 Android APK 中导出 ZIP，避免丢失视频。',true);return;}try{const json=JSON.stringify({format:'flipyear',version:books.some(b=>b.pages.some(p=>p.originalId||p.liveVideoId))?3:2,exportedAt:new Date().toISOString(),books,settings:state.settings,positions:state.positions});if(new TextEncoder().encode(json).length>32*1024*1024)throw Error('相册说明超过 32MB，请逐本导出。');busy(true,'请选择视频 ZIP 的保存位置…');AlbumMedia.saveArchive(json);}catch(e){busy(false);showToast(e.message||'备份未保存',true);}};
+exportBackup=async function(books=state.books){books=journalBackupBooks(books);if(!books.some(b=>b.pages.some(p=>pageMediaIds(p).length)))return photoExportBackup(books);if(!globalThis.AlbumMedia?.saveArchive){showToast('含视频的相册请在 Android APK 中导出 ZIP，避免丢失视频。',true);return;}try{const json=JSON.stringify({format:'flipyear',version:books.some(b=>b.pages.some(p=>p.originalId||p.liveVideoId))?3:2,exportedAt:new Date().toISOString(),books,settings:state.settings,positions:state.positions});if(new TextEncoder().encode(json).length>32*1024*1024)throw Error('相册说明超过 32MB，请逐本导出。');busy(true,'请选择视频 ZIP 的保存位置…');AlbumMedia.saveArchive(json);}catch(e){busy(false);showToast(e.message||'备份未保存',true);}};
 
 function ackAlbumResult(token,keep){try{AlbumMedia.finishResult(token,keep);}catch{showToast('视频操作尚未收尾，请重新打开应用。',true);}handlingAlbumResult=false;}
 function rememberAlbumResult(token){state.completedVideoOperations=[...(state.completedVideoOperations||[]).filter(x=>x!==token),token].slice(-100);}
@@ -55,7 +55,7 @@ window.onAlbumMediaResult=async()=>{
   if(typeof result.token!=='string'||url!=='https://flipyear.local/album-result/'+result.token)throw Error('视频结果编号无效。');
   if((persisted.completedVideoOperations||[]).includes(result.token)||(state.completedVideoOperations||[]).includes(result.token)){ackAlbumResult(result.token,true);busy(false);return;}
   if(result.type==='pair'){
-   const book=state.books.find(b=>b.id===result.target),page=book?.pages.find(p=>p.id===result.pageId);
+   const book=journalMediaBook(result.target),page=book?.pages.find(p=>p.id===result.pageId);
    if(!page||isVideo(page))throw Error('目标照片已不存在，实况视频副本已撤回。');
    const videos=sanitizeVideoPages(result.pages);if(videos.length!==1)throw Error('请选择一段对应实况视频。');
    const previous=clone(page),oldTokens=state.completedVideoOperations;page.liveVideoId=videos[0].videoId;page.liveFilename=videos[0].filename;rememberAlbumResult(result.token);
@@ -64,6 +64,7 @@ window.onAlbumMediaResult=async()=>{
    busy(false);return;
   }
   if(result.type==='import'||result.type==='importPhotos'){
+   if(result.type==='importPhotos'&&/^day:/.test(result.target||'')){await acceptJournalImport(result);busy(false);return;}
    const book=state.books.find(b=>b.id===result.target);if(!book)throw Error('目标相册已不存在，本次视频副本已撤回。');
    const pages=result.type==='importPhotos'?sanitizeOriginalPages(result.pages):sanitizeVideoPages(result.pages);if(book.pages.length+pages.length>1000)throw Error('一本相册最多 1000 页。');
    const oldLength=book.pages.length,oldTokens=state.completedVideoOperations,oldUpdated=book.updated;book.pages.push(...pages);book.updated=Date.now();rememberAlbumResult(result.token);
@@ -72,10 +73,10 @@ window.onAlbumMediaResult=async()=>{
   }
   if(result.type!=='restore')throw Error('未知的视频操作。');
   const incoming=validateAlbumArchive(result.backup);busy(false);
-  openDialog('恢复视频相册备份？','<p id="videoRestoreInfo"></p><p class="notice">作为新相册添加，现有相册保留。视频副本已在手机内暂存，取消会撤回本次副本。</p><div class="dialog-buttons"><button class="secondary" id="cancelVideoRestore">取消</button><button class="primary" id="confirmVideoRestore">恢复相册</button></div>');
-  $('videoRestoreInfo').textContent=`${incoming.length} 本相册 · ${mediaSummary(incoming.flatMap(b=>b.pages))}`;
+  openDialog('恢复媒体备份？','<p id="videoRestoreInfo"></p><p class="notice">每日照片按日期恢复，相册作为新相册添加。现有内容保留，取消会撤回本次暂存副本。</p><div class="dialog-buttons"><button class="secondary" id="cancelVideoRestore">取消</button><button class="primary" id="confirmVideoRestore">恢复相册</button></div>');
+  $('videoRestoreInfo').textContent=`${incoming.filter(b=>!b.dailyJournal).length} 本相册 · ${incoming.filter(b=>b.dailyJournal).reduce((n,b)=>n+b.pages.length,0)} 张每日照片 · ${mediaSummary(incoming.flatMap(b=>b.pages))}`;
   pendingAlbumRestore={token:result.token};$('cancelVideoRestore').onclick=()=>closeDialog();
-  $('confirmVideoRestore').onclick=async()=>{const token=pendingAlbumRestore?.token;if(!token)return;pendingAlbumRestore=null;busy(true,'正在保存恢复的相册…');const oldLength=state.books.length,oldTokens=state.completedVideoOperations;for(const book of incoming){book.id=uid();book.demo=false;book.title=book.title.slice(0,36);state.books.push(book);}rememberAlbumResult(token);if(await save()){ackAlbumResult(token,true);closeDialog();renderShelf();switchTab('albums');showToast('视频相册已恢复');}else{state.books.splice(oldLength);state.completedVideoOperations=oldTokens;ackAlbumResult(token,false);closeDialog();}busy(false);};
+  $('confirmVideoRestore').onclick=async()=>{const token=pendingAlbumRestore?.token;if(!token)return;pendingAlbumRestore=null;busy(true,'正在保存恢复的相册…');const oldLength=state.books.length,oldDailyLength=(state.dailyPhotos||[]).length,oldTokens=state.completedVideoOperations;appendRestoredJournal(incoming);rememberAlbumResult(token);if(await save()){ackAlbumResult(token,true);closeDialog();renderShelf();switchTab(incoming.some(b=>b.dailyJournal)?'years':'albums');showToast('媒体备份已恢复');}else{state.books.splice(oldLength);state.dailyPhotos.splice(oldDailyLength);state.completedVideoOperations=oldTokens;ackAlbumResult(token,false);closeDialog();}busy(false);};
  }catch(e){ackAlbumResult(resultToken,false);busy(false);showToast(e.message||'视频操作未完成，现有相册保留。',true);}
 };
 const closePhotoDialog=closeDialog;
@@ -87,7 +88,7 @@ window.onAlbumArchiveSaved=()=>{busy(false);showToast('媒体 ZIP 备份已保�
 window.onAlbumCleanup=count=>{busy(false);showToast(`已清理 ${count} 个未使用的媒体副本`);};
 $('restoreBtn').insertAdjacentHTML('afterend','<button class="secondary" id="restoreVideoArchive">从媒体 ZIP 恢复</button><button class="secondary" id="cleanupVideos">清理未使用的媒体副本</button><p class="notice">原图、实况和视频使用媒体 ZIP 保存原文件；旧版压缩照片仍可导出 JSON。卸载会删除应用内副本，请定期备份。视频每批最多 20 段、单段 250MB，单份 ZIP 解压总量最多 512MB。</p>');
 $('restoreVideoArchive').onclick=()=>{if(!globalThis.AlbumMedia?.restoreArchive){showToast('视频 ZIP 恢复在 Android APK 中使用。');return;}busy(true,'请选择 FlipYear 视频 ZIP 备份…');try{AlbumMedia.restoreArchive();}catch{onAlbumMediaError('无法打开 ZIP 选择器');}};
-$('cleanupVideos').onclick=()=>{if(!globalThis.AlbumMedia?.cleanup){showToast('视频副本清理在 Android APK 中使用。');return;}openDialog('清理未使用的媒体副本？','<p>只清理已不被任何自建相册引用的应用内媒体副本。手机原文件和相册仍使用的副本会保留。</p><div class="dialog-buttons"><button class="secondary" id="cancelCleanupVideos">取消</button><button class="primary" id="confirmCleanupVideos">清理副本</button></div>');$('cancelCleanupVideos').onclick=closeDialog;$('confirmCleanupVideos').onclick=async()=>{busy(true,'正在检查相册引用…');if(!await save()){busy(false);return;}const kept=[...new Set(state.books.flatMap(b=>b.pages.flatMap(pageMediaIds)))];closeDialog();try{AlbumMedia.cleanup(JSON.stringify(kept));}catch{onAlbumMediaError('清理未完成');}};};
+$('cleanupVideos').onclick=()=>{if(!globalThis.AlbumMedia?.cleanup){showToast('视频副本清理在 Android APK 中使用。');return;}openDialog('清理未使用的媒体副本？','<p>只清理未被自建相册或每日照片引用的应用内副本。手机原文件和仍在使用的副本会保留。</p><div class="dialog-buttons"><button class="secondary" id="cancelCleanupVideos">取消</button><button class="primary" id="confirmCleanupVideos">清理副本</button></div>');$('cancelCleanupVideos').onclick=closeDialog;$('confirmCleanupVideos').onclick=async()=>{busy(true,'正在检查相册引用…');if(!await save()){busy(false);return;}const kept=[...new Set([...state.books.flatMap(b=>b.pages),...(state.dailyPhotos||[])].flatMap(pageMediaIds))];closeDialog();try{AlbumMedia.cleanup(JSON.stringify(kept));}catch{onAlbumMediaError('清理未完成');}};};
 const videoResultShelf=renderShelf;renderShelf=function(){videoResultShelf();onAlbumMediaResult();};
 if(state)onAlbumMediaResult();
 

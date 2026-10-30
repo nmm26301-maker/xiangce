@@ -1,3 +1,4 @@
+const {openYearTools,openPhotoTools}=require('./year-tools.cjs');
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const path=require('node:path');
@@ -13,21 +14,21 @@ const fs=require('node:fs');const path=require('node:path');
   return {days:result.byDate.size,photos:result.byDate.get('2024-06-12').length,total:result.monthTotals[5],current:yearPhotosByDate.get('2026-06-12')?.length||0};
  });
  assert.deepEqual(indexed,{days:1,photos:10000,total:10000,current:1});
- assert.equal(await p.locator('#yearAutoTurn').innerText(),'自动翻页');
- await p.locator('#yearAutoTurn').click();
+ await openYearTools(p);await p.locator('#yearCoverBack').click();await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===0);assert.equal(await p.locator('#yearAutoTurn').innerText(),'自动翻页');
+ await openYearTools(p);await p.locator('#yearAutoTurn').click();
  await p.waitForFunction(()=>yearEngine?.getCurrentPageIndex()>0);
- await p.locator('#yearAutoTurn').click();
+ await openYearTools(p);await p.locator('#yearAutoTurn').click();
  assert.equal(await p.locator('#yearAutoTurn').getAttribute('aria-pressed'),'false');
- await p.locator('#yearAutoTurn').click();await p.keyboard.press('ArrowRight');
+ await openYearTools(p);await p.locator('#yearAutoTurn').click();await p.keyboard.press('ArrowRight');
  assert.equal(await p.locator('#yearAutoTurn').getAttribute('aria-pressed'),'false');
- await p.locator('#yearCoverBack').click();
+ await openYearTools(p);await p.locator('#yearCoverBack').click();
  await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===0);
  await p.locator('#yearNext').click();await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===1);assert.match(await p.locator('#yearPageLabel').innerText(),/1 月/);
  await p.locator('#yearPrev').click();await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===0);
- await p.locator('#yearMonths [data-month="5"]').click();assert.equal(await p.evaluate(()=>yearEngine.getCurrentPageIndex()),6);assert.equal(await p.locator('.calendar-leaf:visible [data-action="day"]').count(),6);
+ await p.locator('#yearMonths [data-month="5"]').click();assert.equal(await p.evaluate(()=>yearEngine.getCurrentPageIndex()),6);assert.equal(await p.locator('.calendar-leaf:visible .has-photo[data-action="day"]').count(),6);
  await p.locator('.calendar-leaf:visible [data-date="2026-06-12"]').click();await p.waitForSelector('#photoViewer:not([hidden])');assert.match(await p.locator('#fullPhotoTitle').innerText(),/2026/);assert.equal(await p.locator('#fullPhoto').evaluate(n=>getComputedStyle(n).objectFit),'contain');await p.keyboard.press('Escape');
- await p.locator('#monthPhotos').click();await p.waitForSelector('#dayPhotoList');assert.equal(await p.locator('#dayPhotoList button').count(),6);await p.keyboard.press('Escape');
- await p.locator('#yearCoverPick').click();await p.locator('#coverPicks button').nth(1).click();await p.waitForSelector('#dialogLayer[hidden]',{state:'attached'});const coverId=await p.evaluate(()=>state.yearCovers[2026]);assert.ok(coverId);
+ await openYearTools(p);await p.locator('#monthPhotos').click();await p.waitForSelector('#dayPhotoList');assert.equal(await p.locator('#dayPhotoList button').count(),6);await p.keyboard.press('Escape');
+ await openYearTools(p);await p.locator('#yearCoverPick').click();await p.locator('#coverPicks button').nth(1).click();await p.waitForSelector('#dialogLayer[hidden]',{state:'attached'});const coverId=await p.evaluate(()=>state.yearCovers[2026]);assert.ok(coverId);
  await p.locator('#yearMonths [data-month="7"]').click();await p.locator('#closeYearReader').click();await p.reload();await p.waitForSelector('.year-option');await p.evaluate(()=>{state.settings.bookRenderer='curl';state.settings.customRenderer='curl';});assert.equal(await p.evaluate(()=>state.yearCovers[2026]),coverId);await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());assert.equal(await p.evaluate(()=>yearEngine.getCurrentPageIndex()),8);
  // Real touch events exercise the engine's mobile Pointer Events path in both directions.
  const rect=await p.locator('#yearBookMount').boundingBox(),y=rect.y+rect.height*.48;
@@ -35,7 +36,7 @@ const fs=require('node:fs');const path=require('node:path');
  async function swipe(x1,x2){await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x1,y}]});for(let i=1;i<=3;i++)await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x1+(x2-x1)*i/3,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
  await swipe(rect.x+rect.width*.85,rect.x+rect.width*.15);await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===9);await swipe(rect.x+rect.width*.15,rect.x+rect.width*.85);await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===8);
  await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:rect.x+rect.width*.85,y}]});for(let i=1;i<=12;i++){await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:rect.x+rect.width*(.85-.7*i/12),y}]});await p.waitForTimeout(40);}await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await p.waitForFunction(()=>yearEngine.getCurrentPageIndex()===9);
- await p.locator('#closeYearReader').click();await p.locator('[data-year="2025"]').click();assert.match(await p.locator('#annualCaptionTitle').innerText(),/2025/);await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());await p.locator('#yearMonths [data-month="1"]').click();assert.equal(await p.locator('.calendar-leaf:visible [data-action="day"]').count(),0);await p.locator('#closeYearReader').click();
+ await p.locator('#closeYearReader').click();await p.locator('[data-year="2025"]').click();assert.match(await p.locator('#annualCaptionTitle').innerText(),/2025/);await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());await p.locator('#yearMonths [data-month="1"]').click();assert.equal(await p.locator('.calendar-leaf:visible .has-photo[data-action="day"]').count(),0);await p.locator('#closeYearReader').click();
  for(const viewport of [{width:320,height:740},{width:375,height:812},{width:768,height:1024},{width:844,height:390},{width:1440,height:900}]){await p.setViewportSize(viewport);await p.waitForTimeout(250);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'shelf '+JSON.stringify(viewport));await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());assert.equal(await p.evaluate(()=>document.querySelector('#yearReader').scrollWidth<=innerWidth),true,'reader '+JSON.stringify(viewport));if(viewport.width>=800){await p.locator('#yearMonths [data-month="2"]').click();assert.ok((await p.evaluate(()=>yearEngine.getVisiblePages())).length>=2);}await p.locator('#closeYearReader').click();}
  await p.setViewportSize({width:390,height:844});await p.locator('[data-tab="settings"]').click();await p.locator('#reduceMotion').check();await p.locator('[data-tab="years"]').click();await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isReady());await p.locator('#yearNext').click();assert.equal(await p.evaluate(()=>yearEngine.isAnimating()),false);await p.locator('#closeYearReader').click();await p.locator('[data-tab="settings"]').click();await p.locator('#engineInfo').click();const downloadPromise=p.waitForEvent('download');await p.locator('#exportEngineSource').click();const download=await downloadPromise;assert.match(download.suggestedFilename(),/engine-source/);await p.keyboard.press('Escape');
  await context.close();

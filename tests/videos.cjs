@@ -1,3 +1,4 @@
+const {openYearTools,openPhotoTools}=require('./year-tools.cjs');
 /* Native transport is mocked. Actual playback/codecs/permissions need an Android device. */
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
@@ -30,12 +31,12 @@ const fs=require('node:fs'),path=require('node:path');
   const day=page.locator('.calendar-leaf:visible [data-date="2024-06-12"]');assert.match(await day.getAttribute('aria-label'),/1 张照片 · 1 段视频/);assert.equal(await day.locator('.video-badge').count(),1);
   await day.click();await page.waitForSelector('#photoViewer:not([hidden])');assert.equal(await page.locator('#playVideo').isHidden(),true);
   await page.locator('#fullPhotoNext').click();assert.match(await page.locator('#playVideo').innerText(),/1:01/);assert.deepEqual(await page.evaluate(()=>playCalls),[]);
-  await page.locator('#playVideo').click();assert.deepEqual(await page.evaluate(()=>playCalls),['device-video-7']);
+  await openPhotoTools(page);await page.locator('#playVideo').click();assert.deepEqual(await page.evaluate(()=>playCalls),['device-video-7']);
   await page.evaluate(()=>onNativeVideoError());assert.match(await page.locator('#toast').innerText(),/未能打开/);
   await page.keyboard.press('Escape');await page.locator('.calendar-leaf:visible [data-date="2024-06-13"]').click();
-  await page.waitForFunction(()=>document.querySelector('#fullPhoto').complete);assert.equal(await page.locator('#playVideo').isVisible(),true);await page.locator('#playVideo').click();assert.equal(await page.evaluate(()=>playCalls.at(-1)),'device-video-8');
-  await page.keyboard.press('Escape');await page.locator('#monthPhotos').click();assert.match(await page.locator('#dayPhotoList').innerText(),/视频 1:01/);await page.keyboard.press('Escape');
-  await page.locator('#yearCoverPick').click();await page.locator('#coverPicks button').nth(1).click();await page.waitForSelector('#dialogLayer[hidden]',{state:'attached'});assert.equal(await page.evaluate(()=>state.yearCovers[2024]),'device-video-7');
+  await page.waitForFunction(()=>document.querySelector('#fullPhoto').complete);await openPhotoTools(page);assert.equal(await page.locator('#playVideo').isVisible(),true);await openPhotoTools(page);await page.locator('#playVideo').click();assert.equal(await page.evaluate(()=>playCalls.at(-1)),'device-video-8');
+  await page.keyboard.press('Escape');await openYearTools(page);await page.locator('#monthPhotos').click();assert.match(await page.locator('#dayPhotoList').innerText(),/视频 1:01/);await page.keyboard.press('Escape');
+  await openYearTools(page);await page.locator('#yearCoverPick').click();await page.locator('#coverPicks button').nth(1).click();await page.waitForSelector('#dialogLayer[hidden]',{state:'attached'});assert.equal(await page.evaluate(()=>state.yearCovers[2024]),'device-video-7');
   await page.locator('#closeYearReader').click();await page.locator('[data-tab="memories"]').click();assert.equal(await page.locator('#todayCard .video-badge').count(),1);
   await page.locator('#todayCard button').click();assert.match(await page.locator('#playVideo').innerText(),/1:00:01/);await page.keyboard.press('Escape');
   // Removing a type's grant filters old records even when the current scan fails.
@@ -50,10 +51,10 @@ const fs=require('node:fs'),path=require('node:path');
   await page.evaluate(async records=>{beginGalleryImport();receiveGalleryBatch(records);await finishGalleryImport('full',null);beginGalleryImport();await finishGalleryImport('denied','授权已收回',{images:'denied',videos:'denied'});},records);
   assert.equal(await page.evaluate(()=>state.gallery.length),0);assert.equal(await page.evaluate(()=>state.books.length),2);
   // Missing native support and malicious identifiers produce a message, not a launch.
-  await page.evaluate(records=>showPhoto([records[1]],0),records);await page.evaluate(()=>delete Android.playVideo);await page.locator('#playVideo').click();assert.match(await page.locator('#toast').innerText(),/Android APK/);
-  await page.evaluate(()=>{photoSet[0].id='https://example.com/video.mp4';});await page.locator('#playVideo').click();assert.match(await page.locator('#toast').innerText(),/索引无效/);
+  await page.evaluate(records=>showPhoto([records[1]],0),records);await page.evaluate(()=>delete Android.playVideo);await openPhotoTools(page);await page.locator('#playVideo').click();assert.match(await page.locator('#toast').innerText(),/Android APK/);
+  await page.evaluate(()=>{photoSet[0].id='https://example.com/video.mp4';});await openPhotoTools(page);await page.locator('#playVideo').click();assert.match(await page.locator('#toast').innerText(),/索引无效/);
   assert.equal(await page.evaluate(()=>playCalls.length),2);
-  for(const viewport of [{width:320,height:740},{width:844,height:390}]){await page.setViewportSize(viewport);assert.equal(await page.locator('#photoViewer').evaluate(n=>n.scrollWidth<=innerWidth),true);assert.equal(await page.locator('#playVideo').isVisible(),true);}
+  for(const viewport of [{width:320,height:740},{width:844,height:390}]){await page.setViewportSize(viewport);assert.equal(await page.locator('#photoViewer').evaluate(n=>n.scrollWidth<=innerWidth),true);await openPhotoTools(page);assert.equal(await page.locator('#playVideo').isVisible(),true);}
   await page.screenshot({path:path.join(root,'build/video-preview-internal.png')});
   assert.deepEqual(errors,[]);console.log('PASS photo/video batches, day and month badges, durations, explicit native playback, poster failure, video covers, on-this-day, grant filtering on scan failure, partial refresh/revocation, bridge fallback, invalid IDs and responsive preview. Native transport mocked.');
  } finally {await browser.close();}

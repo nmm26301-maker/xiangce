@@ -1,3 +1,4 @@
+const {openYearTools,openPhotoTools}=require('./year-tools.cjs');
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
 (async()=>{
  const root=path.resolve(__dirname,'..'),browser=await chromium.launch({executablePath:process.env.CHROME_BIN,args:['--no-sandbox','--enable-unsafe-swiftshader']});
@@ -17,7 +18,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   // Inverse-project a real photo cell through the perspective camera and tap it.
   const point=await p.evaluate(()=>{
    const engine=yearEngine,cell=engine.displayed[0].dayHits.find(h=>h.date==='2026-06-12'),mesh=engine.book.meshR;
-   const v=mesh.position.clone().set(((cell.x+cell.w/2)/600-.5)*engine.book.PW,(.5-(cell.y+cell.h/2)/764)*engine.book.PH,0);
+   const v=mesh.position.clone().set(((cell.x+cell.w/2)/engine.textureWidth-.5)*engine.book.PW,(.5-(cell.y+cell.h/2)/engine.textureHeight)*engine.book.PH,0);
    mesh.localToWorld(v);v.project(engine.book.camera);const r=engine.canvas.getBoundingClientRect();return {x:r.x+(v.x+1)*r.width/2,y:r.y+(1-v.y)*r.height/2};
   });
   await p.touchscreen.tap(point.x,point.y);await p.waitForSelector('#photoViewer:not([hidden])');assert.match(await p.locator('#fullPhotoTitle').innerText(),/2026/);await p.keyboard.press('Escape');
@@ -29,7 +30,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await p.waitForFunction(()=>yearEngine.index===7&&!yearEngine.isAnimating());
   await p.locator('#closeYearReader').click();await p.locator('#openAnnual').click();await p.waitForFunction(()=>yearEngine?.isWebGL&&yearEngine.isReady());assert.equal(await p.evaluate(()=>yearEngine.index),7);
   await p.setViewportSize({width:844,height:390});await p.waitForFunction(()=>yearEngine?.isWebGL&&yearEngine.wide&&yearEngine.isReady());assert.equal((await p.evaluate(()=>yearEngine.getVisiblePages())).length,2);
-  for(const id of ['yearPrev','yearNext','monthPhotos','yearRenderMode']){const r=await p.locator('#'+id).boundingBox();assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=844&&r.y+r.height<=390,id+' fits landscape viewport');}
+  await openYearTools(p);for(const id of ['yearPrev','yearNext','monthPhotos','yearRenderMode']){const r=await p.locator('#'+id).boundingBox();assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=844&&r.y+r.height<=390,id+' fits landscape viewport');}
   await p.screenshot({path:'/tmp/flipyear-webgl-wide.png'});await p.locator('#yearPrev').click();await p.waitForFunction(()=>!yearEngine.isAnimating()&&yearEngine.isReady());
   // Losing the actual WebGL context must recover through the existing HTML engine.
   await p.evaluate(()=>yearEngine.book.renderer.getContext().getExtension('WEBGL_lose_context').loseContext());
@@ -38,7 +39,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   assert.deepEqual(errors,[]);await context.close();
   const unsupported=await browser.newContext({viewport:{width:390,height:844}});
   await unsupported.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(name,...args){return name==='webgl2'?null:get.call(this,name,...args);};});
-  const q=await unsupported.newPage();await q.goto('file://'+path.join(root,'FlipYear.html'));await q.waitForSelector('.year-option');await q.locator('#openAnnual').click();await q.waitForFunction(()=>yearEngine?.isReady());await q.locator('#yearRenderMode').click();await q.waitForFunction(()=>state.settings.bookRenderer==='curl'&&yearEngine?.isReady());await unsupported.close();
+  const q=await unsupported.newPage();await q.goto('file://'+path.join(root,'FlipYear.html'));await q.waitForSelector('.year-option');await q.locator('#openAnnual').click();await q.waitForFunction(()=>yearEngine?.isReady());await openYearTools(q);await q.locator('#yearRenderMode').click();await q.waitForFunction(()=>state.settings.bookRenderer==='curl'&&yearEngine?.isReady());await unsupported.close();
   console.log('PASS real WebGL mesh depth, ray-picked photo dates, forward/reverse and slow touch curl, cancelled drag, demand rendering, progress persistence, portrait/wide layouts, context loss and unsupported-device fallback, bundled MIT notices. Chromium software GPU; not a phone GPU benchmark.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
