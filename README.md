@@ -1,5 +1,7 @@
 # FlipYear 相册书 · 2.9.0 开发版
 
+> **签名安全提示：** 当前开发签名 JKS 在公开仓库中可见，详见 [安全备份清单](SECURITY-BACKUP.md)。换签会阻止直接覆盖安装；请先完成新包名迁移与照片/视频导出方案。
+
 **[直接下载安卓 APK 2.9.0](https://raw.githubusercontent.com/nmm26301-maker/xiangce/main/releases/FlipYear-v2.9.0.apk)** · 不必解压 · 升级请覆盖安装，勿卸载旧版。
 
 安卓本地年度照片书的个人实现。黑色书房背景、年度转盘、照片封面、十二个月的日历纸张和卷页动画。
